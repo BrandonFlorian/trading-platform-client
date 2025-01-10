@@ -2,7 +2,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useWalletTrackerStore } from "@/stores/walletTrackerStore";
+import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import {
   Form,
   FormControl,

@@ -3,7 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { useWalletTrackerStore } from "@/stores/walletTrackerStore";
+import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { Bell, CheckCircle2, XCircle, AlertCircle, Info } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";

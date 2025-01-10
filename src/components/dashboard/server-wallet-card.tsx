@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useWalletTrackerStore } from "@/stores/walletTrackerStore";
+import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Dialog,

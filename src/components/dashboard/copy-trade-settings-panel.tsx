@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useWalletTrackerStore } from "@/stores/walletTrackerStore";
+import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { CopyTradeSettings } from "@/types";

@@ -1,11 +1,11 @@
 "use client";
-import { useWalletTrackerStore } from "@/stores/walletTrackerStore";
+import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { ConnectionStatus } from "@/components/dashboard/connection-status";
 import { ServerWalletCard } from "@/components/dashboard/server-wallet-card";
 import { CopyTradeSettingsPanel } from "@/components/dashboard/copy-trade-settings-panel";
 import { NotificationsPanel } from "@/components/dashboard/notification-panel";
 import { Loader2 } from "lucide-react";
-import useWebsocket from "@/hooks/useWebsocket";
+import useWebsocket from "@/hooks/use-websocket";
 import { useEffect } from "react";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
