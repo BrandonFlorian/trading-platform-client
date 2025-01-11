@@ -1,4 +1,4 @@
-import { useWalletTrackerStore } from "@/stores/walletTrackerStore";
+import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { CommandMessage } from "@/types/websocket";
