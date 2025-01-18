@@ -6,13 +6,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenInfo } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TokenRow } from "./token-row";
-import { TradeDialog } from "@/components/tracked-wallet/trade-dialog";
+import { TokenRow } from "@/components/dashboard/token-row";
+import { TradeDialog } from "@/components/dashboard/trade-dialog";
 import { RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import { DexType } from "@/types/crypto";
 import { TradeType } from "@/types/ui";
-import { formatNumber } from "@/lib/utils/format";
 import { API_BASE_URL, TRACKED_WALLET_ADDRESS } from "@/config/constants";
 
 interface ServerToken {

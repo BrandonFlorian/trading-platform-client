@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { Bell, CheckCircle2, XCircle, AlertCircle, Info } from "lucide-react";
 import { Button } from "../ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/types/utils";
 
 const getNotificationIcon = (type: string) => {
   switch (type) {

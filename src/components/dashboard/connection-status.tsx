@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/types/utils";
 import { ConnectionState } from "@/types/ui";
 
 export const ConnectionStatus = ({ status }: { status: ConnectionState }) => {

@@ -17,7 +17,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-// Define our interfaces for type safety
 interface TrackedWallet {
   wallet_address: string;
   is_active: boolean;
@@ -40,7 +39,7 @@ interface WalletData {
 }
 
 export function WalletLookup() {
-  // State management
+
   const [walletAddress, setWalletAddress] = useState("");
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -52,12 +51,12 @@ export function WalletLookup() {
     makeTracked: false,
   });
 
-  // Fetch tracked wallets on component mount
+
   useEffect(() => {
     fetchTrackedWallets();
   }, []);
 
-  // Function to fetch the list of tracked wallets
+
   const fetchTrackedWallets = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/tracked_wallets`);
@@ -72,14 +71,14 @@ export function WalletLookup() {
     }
   };
 
-  // Handle Enter key press in the input field
+
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleLookupTrigger();
     }
   };
 
-  // Trigger the lookup confirmation dialog
+
   const handleLookupTrigger = () => {
     if (!walletAddress.trim()) {
       toast.error("Please enter a wallet address");
@@ -88,7 +87,7 @@ export function WalletLookup() {
     setShowConfirmation(true);
   };
 
-  // Handle the confirmation dialog submission
+
   const handleConfirmLookup = async () => {
     setShowConfirmation(false);
     await fetchWalletData();
@@ -98,7 +97,7 @@ export function WalletLookup() {
     }
   };
 
-  // Handle tracking/untracking a wallet
+
   const handleTrackingToggle = async (address: string, shouldTrack: boolean) => {
     try {
       const method = shouldTrack ? 'POST' : 'DELETE';
@@ -132,7 +131,7 @@ export function WalletLookup() {
     }
   };
 
-  // Fetch wallet data from the API
+
   const fetchWalletData = async () => {
     setIsLoading(true);
     setError(null);
@@ -182,7 +181,7 @@ export function WalletLookup() {
         </CardContent>
       </Card>
 
-      {/* Tracked Wallets Card */}
+
       <Card>
         <CardHeader>
           <CardTitle>Tracked Wallets</CardTitle>
@@ -227,7 +226,7 @@ export function WalletLookup() {
         </CardContent>
       </Card>
 
-      {/* Confirmation Dialog */}
+
       <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
         <DialogContent>
           <DialogHeader>
@@ -254,7 +253,7 @@ export function WalletLookup() {
         </DialogContent>
       </Dialog>
 
-      {/* Wallet Data Display */}
+
       {error ? (
         <Card className="border-destructive">
           <CardHeader>

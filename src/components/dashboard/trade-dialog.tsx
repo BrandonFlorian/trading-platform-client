@@ -7,7 +7,7 @@ import { formatNumber } from "@/lib/utils/format";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-// UI Components
+
 import {
   Dialog,
   DialogContent,
@@ -50,7 +50,7 @@ export function TradeDialog({
   const handleTrade = async (type: TradeType, amount: number) => {
     try {
       await onTrade(type, amount, selectedDex);
-      const message = type === 'buy' 
+      const message = type === 'buy'
         ? `Bought ${amount} SOL worth of ${token.symbol}`
         : `Sold ${amount} ${token.symbol}`;
       toast.success(message);

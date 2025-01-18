@@ -34,20 +34,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
       >
-        {/* Navigation bar */}
         <NavBar />
-
-        {/* Main content area with padding for fixed header and footer */}
-        <div className="flex flex-col min-h-screen">
-          <main className="flex-grow mt-16 mb-16 px-4">
-            {children}
-          </main>
-        </div>
-
-        {/* Footer */}
+        {children}
         <Footer />
-
-        {/* Toast notifications */}
         <Toaster />
       </body>
     </html>

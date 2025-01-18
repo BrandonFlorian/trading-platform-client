@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, NavigationMenuTrigger } from "@/components/ui/navigation-menu";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn } from "@/types/utils";
 
 export default function Footer() {
     // Track when we're near the bottom of the page
