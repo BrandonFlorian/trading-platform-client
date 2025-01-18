@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TokenInfo } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TokenRow } from "./token-row";
+import { TokenRow } from "@/components/dashboard/token-row";
 import { TradePanel } from "./trade-panel";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -173,7 +173,7 @@ export const ServerWalletCard = () => {
           <DialogHeader>
             <DialogTitle>Trade</DialogTitle>
             <DialogDescription>
-              Trade {selectedToken?.symbol} on {}
+              Trade {selectedToken?.symbol} on { }
             </DialogDescription>
           </DialogHeader>
           {selectedToken && (

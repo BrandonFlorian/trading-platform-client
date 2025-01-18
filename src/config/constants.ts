@@ -1,8 +1,8 @@
-export const WALLET_TRACKER_WEBSOCKET_URL: string =
-  process.env.NEXT_PUBLIC_WEBSOCKET_URL!;
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL!;
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+export const TRACKED_WALLET_ADDRESS = process.env.NEXT_PUBLIC_TRACKED_WALLET_ADDRESS;
 
-export const HTTP_STATUS_CODES = {
+  
+  export const HTTP_STATUS_CODES = {
   OK: 200,
   CREATED: 201,
   ACCEPTED: 202,

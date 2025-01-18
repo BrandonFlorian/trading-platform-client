@@ -1,10 +1,27 @@
-import { CopyTradeSettings, TokenInfo, WalletUpdate } from "./index";
 import { DexType } from "./crypto";
+
+export interface TokenInfo {
+  address: string;
+  symbol: string;
+  name: string;
+  balance: string;
+  decimals: number;
+  metadata_uri?: string;
+}
+
 export type ConnectionState = "connected" | "connecting" | "disconnected";
+
+export type TradeType = "buy" | "sell";
 
 export interface TokenRowProps {
   token: TokenInfo;
   onClickTrade: () => void;
+}
+
+export interface TokenTradeProps {
+  token: TokenInfo;
+  onTrade: (type: TradeType, amount: number, dex: DexType) => Promise<void>;
+  isLoading?: boolean;
 }
 
 export interface TradeFormState {
@@ -12,25 +29,16 @@ export interface TradeFormState {
   slippage: number;
 }
 
-export interface ServerWalletState extends WalletTrackerState {
+export interface ServerWalletState {
   error?: string;
-}
-
-// Extend the store state
-export interface WalletTrackerState {
-  serverWallet: WalletUpdate | null;
+  serverWallet: TokenInfo[] | null;
   isLoading: boolean;
-  error?: string;
-  copyTradeSettings: CopyTradeSettings | null;
-  isSettingsEnabled: boolean;
-  connectionStatus: ConnectionState;
-  notifications: Notification[];
 }
 
-export type TradeType = "buy" | "sell";
-
-export interface TokenTradeProps {
-  token: TokenInfo;
-  onTrade: (type: TradeType, amount: number, dex: DexType) => Promise<void>;
-  isLoading?: boolean;
+export interface Notification {
+  id: string;
+  type: "success" | "error" | "info" | "warning";
+  title: string;
+  message: string;
+  timestamp: Date;
 }

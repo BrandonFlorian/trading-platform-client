@@ -108,3 +108,4 @@ export interface WalletStore {
 }
 
 export type DexType = "pump_fun" | "raydium";
+
