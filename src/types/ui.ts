@@ -1,10 +1,11 @@
-import { CopyTradeSettings, TokenInfo, WalletUpdate } from "./index";
+import { TokenInfo as BaseTokenInfo, CopyTradeSettings } from "./index";
 import { DexType } from "./crypto";
+
 export type ConnectionState = "connected" | "connecting" | "disconnected";
 
 export interface TokenRowProps {
-  token: TokenInfo;
-  onClickTrade: () => void;
+  token: BaseTokenInfo;
+  onClickTrade: () => Promise<void>;
 }
 
 export interface TradeFormState {
@@ -16,9 +17,8 @@ export interface ServerWalletState extends WalletTrackerState {
   error?: string;
 }
 
-// Extend the store state
 export interface WalletTrackerState {
-  serverWallet: WalletUpdate | null;
+  serverWallet: BaseTokenInfo | null;
   isLoading: boolean;
   error?: string;
   copyTradeSettings: CopyTradeSettings | null;
@@ -30,7 +30,7 @@ export interface WalletTrackerState {
 export type TradeType = "buy" | "sell";
 
 export interface TokenTradeProps {
-  token: TokenInfo;
+  token: BaseTokenInfo;
   onTrade: (type: TradeType, amount: number, dex: DexType) => Promise<void>;
   isLoading?: boolean;
 }

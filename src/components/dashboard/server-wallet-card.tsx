@@ -1,90 +1,30 @@
 import { useState } from "react";
 import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TokenInfo } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import { TokenRow } from "./token-row";
-import { TradePanel } from "./trade-panel";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TokenInfo } from "@/types";
+import { TokenRow } from "./token-row";
+import { TradePanel } from "./trade-panel";
+import ServerWalletCardSkeleton from "@/components/server-wallet-card-skeleton";
 import { DexType } from "@/types/crypto";
-import { TradeType } from "@/types/ui";
 
 export const ServerWalletCard = () => {
   const {
     serverWallet,
-    isLoading,
     error,
     executeBuy,
     executeSell,
     copyTradeSettings,
+    loadingStates
   } = useWalletTrackerStore();
+
   const [selectedToken, setSelectedToken] = useState<TokenInfo | null>(null);
   const [showNewTokenDialog, setShowNewTokenDialog] = useState<boolean>(false);
   const [newTokenAddress, setNewTokenAddress] = useState<string>("");
-
-  const handleCloseTrade = () => {
-    setSelectedToken(null);
-  };
-
-  const handleCloseNewToken = () => {
-    setShowNewTokenDialog(false);
-    setNewTokenAddress("");
-  };
-
-  const handleTrade = async (type: TradeType, amount: number, dex: DexType) => {
-    if (!selectedToken && type === "sell") return;
-
-    try {
-      if (type === "buy") {
-        await executeBuy(
-          selectedToken?.address || newTokenAddress,
-          amount,
-          copyTradeSettings?.max_slippage || 0.2,
-          dex
-        );
-      } else {
-        await executeSell(
-          selectedToken!.address,
-          amount,
-          copyTradeSettings?.max_slippage || 0.2,
-          dex
-        );
-      }
-      handleCloseTrade();
-      handleCloseNewToken();
-    } catch (error) {
-      console.error("Trade failed:", error);
-      // Error handling is done in the store
-    }
-  };
-
-  const handleNewToken = () => {
-    if (!newTokenAddress.trim()) {
-      toast.error("Please enter a token address");
-      return;
-    }
-    // Create a minimal token info object for the trade panel
-    const tokenInfo: TokenInfo = {
-      address: newTokenAddress,
-      symbol: "NEW",
-      name: "New Token",
-      balance: "0",
-      decimals: 9,
-      market_cap: 0,
-    };
-    setSelectedToken(tokenInfo);
-    setShowNewTokenDialog(false);
-  };
 
   if (error) {
     return (
@@ -106,37 +46,60 @@ export const ServerWalletCard = () => {
     );
   }
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex justify-between">
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-6 w-24" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-              </div>
-              <div className="text-right">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-16 mt-1" />
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    );
+  if (loadingStates.walletInfo) {
+    return <ServerWalletCardSkeleton />;
   }
 
   if (!serverWallet) return null;
+
+  const handleTrade = async (type: "buy" | "sell", amount: number, dex: DexType) => {
+    if (!selectedToken && type === "sell") return;
+
+    try {
+      if (type === "buy") {
+        await executeBuy(
+          selectedToken?.address || newTokenAddress,
+          amount,
+          copyTradeSettings?.max_slippage || 0.2,
+          dex
+        );
+      } else {
+        await executeSell(
+          selectedToken!.address,
+          amount,
+          copyTradeSettings?.max_slippage || 0.2,
+          dex
+        );
+      }
+      setSelectedToken(null);
+      setShowNewTokenDialog(false);
+      setNewTokenAddress("");
+    } catch (error) {
+      console.error("Trade failed:", error);
+      throw error; // Re-throw to be handled by TokenRow
+    }
+  };
+
+  const handleClickTrade = async (token: TokenInfo): Promise<void> => {
+    setSelectedToken(token);
+  };
+
+  const handleNewToken = () => {
+    if (!newTokenAddress.trim()) {
+      toast.error("Please enter a token address");
+      return;
+    }
+    const tokenInfo: TokenInfo = {
+      address: newTokenAddress,
+      symbol: "NEW",
+      name: "New Token",
+      balance: "0",
+      decimals: 9,
+      market_cap: 0,
+    };
+    setSelectedToken(tokenInfo);
+    setShowNewTokenDialog(false);
+  };
 
   return (
     <>
@@ -162,25 +125,22 @@ export const ServerWalletCard = () => {
             <TokenRow
               key={token.address}
               token={token}
-              onClickTrade={() => setSelectedToken(token)}
+              onClickTrade={() => handleClickTrade(token)}
             />
           ))}
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedToken} onOpenChange={() => handleCloseTrade()}>
+      <Dialog open={!!selectedToken} onOpenChange={() => setSelectedToken(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Trade</DialogTitle>
-            <DialogDescription>
-              Trade {selectedToken?.symbol} on {}
-            </DialogDescription>
+            <DialogTitle>Trade {selectedToken?.symbol}</DialogTitle>
           </DialogHeader>
           {selectedToken && (
             <TradePanel
               token={selectedToken}
               onTrade={handleTrade}
-              isLoading={isLoading}
+              isLoading={loadingStates.trade}
             />
           )}
         </DialogContent>
@@ -188,7 +148,7 @@ export const ServerWalletCard = () => {
 
       <Dialog
         open={showNewTokenDialog}
-        onOpenChange={() => handleCloseNewToken()}
+        onOpenChange={() => setShowNewTokenDialog(false)}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -196,7 +156,6 @@ export const ServerWalletCard = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Token Address</label>
               <Input
                 value={newTokenAddress}
                 onChange={(e) => setNewTokenAddress(e.target.value)}

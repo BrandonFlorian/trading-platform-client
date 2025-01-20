@@ -1,38 +1,34 @@
-// stores/walletTrackerStore.ts
 import { create } from "zustand";
 import { WalletUpdate, CopyTradeSettings, Notification } from "@/types";
 import { API_BASE_URL } from "@/config/constants";
 import { DexType } from "@/types/crypto";
 
-interface WalletTrackerState {
-  // Server Wallet State
-  serverWallet: WalletUpdate | null;
-  isLoading: boolean;
-  error: string | null;
+interface LoadingStates {
+  walletInfo: boolean;
+  copyTradeSettings: boolean;
+  notifications: boolean;
+  trade: boolean;
+}
 
-  // Copy Trade Settings
+interface WalletTrackerState {
+  serverWallet: WalletUpdate | null;
+  error: string | null;
   copyTradeSettings: CopyTradeSettings | null;
   isSettingsEnabled: boolean;
-
-  // Connection Status
   connectionStatus: "connected" | "connecting" | "disconnected";
-
-  // Notifications
   notifications: Notification[];
+  loadingStates: LoadingStates;
 
-  // Actions
   setServerWallet: (wallet: WalletUpdate) => void;
   setCopyTradeSettings: (settings: CopyTradeSettings) => void;
-  setConnectionStatus: (
-    status: "connected" | "connecting" | "disconnected"
-  ) => void;
+  setConnectionStatus: (status: "connected" | "connecting" | "disconnected") => void;
   addNotification: (notification: Notification) => void;
   clearNotifications: () => void;
+  setLoading: (component: keyof LoadingStates, isLoading: boolean) => void;
 
   fetchWalletInfo: () => Promise<void>;
   fetchCopyTradeSettings: () => Promise<void>;
 
-  // Trading Actions
   executeBuy: (
     tokenAddress: string,
     amount: number,
@@ -49,28 +45,37 @@ interface WalletTrackerState {
 
 export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
   serverWallet: null,
-  isLoading: false,
   error: null,
   copyTradeSettings: null,
   isSettingsEnabled: false,
   connectionStatus: "disconnected",
   notifications: [],
+  loadingStates: {
+    walletInfo: false,
+    copyTradeSettings: false,
+    notifications: false,
+    trade: false,
+  },
 
-  setServerWallet: (wallet) => set({ serverWallet: wallet }),
-
-  setConnectionStatus: (status) => set({ connectionStatus: status }),
-
-  setError: (error: string) => set({ error }),
-
-  addNotification: (notification) =>
+  setLoading: (component, isLoading) =>
     set((state) => ({
-      notifications: [notification, ...state.notifications].slice(0, 50), // Keep last 50
+      loadingStates: {
+        ...state.loadingStates,
+        [component]: isLoading,
+      },
     })),
 
+  setServerWallet: (wallet) => set({ serverWallet: wallet }),
+  setConnectionStatus: (status) => set({ connectionStatus: status }),
+  addNotification: (notification) =>
+    set((state) => ({
+      notifications: [notification, ...state.notifications].slice(0, 50),
+    })),
   clearNotifications: () => set({ notifications: [] }),
 
   fetchWalletInfo: async () => {
-    set({ isLoading: true, error: null });
+    const { setLoading } = get();
+    setLoading("walletInfo", true);
     try {
       const response = await fetch(`${API_BASE_URL}/wallet/info`);
       if (!response.ok) throw new Error("Failed to fetch wallet info");
@@ -78,37 +83,30 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
       set({ serverWallet: data });
     } catch (error) {
       set({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch wallet info",
+        error: error instanceof Error ? error.message : "Failed to fetch wallet info",
       });
     } finally {
-      set({ isLoading: false });
+      setLoading("walletInfo", false);
     }
   },
 
   fetchCopyTradeSettings: async () => {
-    set({ isLoading: true, error: null });
+    const { setLoading } = get();
+    setLoading("copyTradeSettings", true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/copy_trade_settings`
-      );
+      const response = await fetch(`${API_BASE_URL}/copy_trade_settings`);
       if (!response.ok) throw new Error("Failed to fetch copy trade settings");
       const [data] = await response.json();
-
       set({
         copyTradeSettings: data,
         isSettingsEnabled: data.is_enabled,
-        isLoading: false,
       });
     } catch (error) {
-      console.error("Fetch settings error:", error);
       set({
-        error:
-          error instanceof Error ? error.message : "Failed to fetch settings",
-        isLoading: false,
+        error: error instanceof Error ? error.message : "Failed to fetch settings",
       });
+    } finally {
+      setLoading("copyTradeSettings", false);
     }
   },
 
@@ -118,13 +116,10 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
       isSettingsEnabled: settings?.is_enabled ?? false,
     });
   },
-  executeBuy: async (
-    tokenAddress: string,
-    amount: number,
-    slippageTolerance: number,
-    dex: DexType
-  ) => {
-    set({ isLoading: true });
+
+  executeBuy: async (tokenAddress, amount, slippageTolerance, dex) => {
+    const { setLoading, addNotification } = get();
+    setLoading("trade", true);
     try {
       const response = await fetch(`${API_BASE_URL}/${dex}/buy`, {
         method: "POST",
@@ -139,7 +134,7 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
       if (!response.ok) throw new Error("Buy failed");
 
       const result = await response.json();
-      get().addNotification({
+      addNotification({
         id: crypto.randomUUID(),
         type: "success",
         title: "Buy Executed",
@@ -147,28 +142,23 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
         timestamp: new Date(),
       });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       set({ error: errorMessage });
-      get().addNotification({
+      addNotification({
         id: crypto.randomUUID(),
         type: "error",
         title: "Buy Failed",
-        message: error instanceof Error ? error.message : "Unknown error",
+        message: errorMessage,
         timestamp: new Date(),
       });
     } finally {
-      set({ isLoading: false });
+      setLoading("trade", false);
     }
   },
 
-  executeSell: async (
-    tokenAddress: string,
-    amount: number,
-    slippageTolerance: number,
-    dex: DexType
-  ) => {
-    set({ isLoading: true });
+  executeSell: async (tokenAddress, amount, slippageTolerance, dex) => {
+    const { setLoading, addNotification } = get();
+    setLoading("trade", true);
     try {
       const response = await fetch(`${API_BASE_URL}/${dex}/sell`, {
         method: "POST",
@@ -183,7 +173,7 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
       if (!response.ok) throw new Error("Sell failed");
 
       const result = await response.json();
-      get().addNotification({
+      addNotification({
         id: crypto.randomUUID(),
         type: "success",
         title: "Sell Executed",
@@ -191,18 +181,17 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
         timestamp: new Date(),
       });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       set({ error: errorMessage });
-      get().addNotification({
+      addNotification({
         id: crypto.randomUUID(),
         type: "error",
         title: "Sell Failed",
-        message: error instanceof Error ? error.message : "Unknown error",
+        message: errorMessage,
         timestamp: new Date(),
       });
     } finally {
-      set({ isLoading: false });
+      setLoading("trade", false);
     }
   },
 }));

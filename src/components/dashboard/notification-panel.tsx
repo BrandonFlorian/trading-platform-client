@@ -1,12 +1,15 @@
-"use client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { Bell, CheckCircle2, XCircle, AlertCircle, Info } from "lucide-react";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import NotificationsPanelSkeleton from "@/components/notifications-skeleton";
+import { ComponentError } from "@/components/ui/error/component-error";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
@@ -35,7 +38,34 @@ const getNotificationBadge = (type: string) => {
 };
 
 export const NotificationsPanel = () => {
-  const { notifications, clearNotifications } = useWalletTrackerStore();
+  const { notifications, clearNotifications, loadingStates, error } = useWalletTrackerStore();
+  const [isClearing, setIsClearing] = useState(false);
+
+  if (loadingStates.notifications) {
+    return <NotificationsPanelSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <ComponentError
+        title="Failed to Load Notifications"
+        message={error}
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
+
+  const handleClearNotifications = async () => {
+    setIsClearing(true);
+    try {
+      await clearNotifications();
+      toast.success("Notifications cleared");
+    } catch (error) {
+      toast.error("Failed to clear notifications");
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   return (
     <Card>
@@ -46,8 +76,13 @@ export const NotificationsPanel = () => {
             <span>Notifications</span>
           </div>
           {notifications.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearNotifications}>
-              Clear All
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearNotifications}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing..." : "Clear All"}
             </Button>
           )}
         </CardTitle>

@@ -1,15 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { CopyTradeSettings } from "@/types";
+import CopyTradeSettingsSkeleton from "@/components/copy-trade-settings-skeleton";
+import { ComponentError } from "@/components/ui/error/component-error";
 
-const convertSettingsToFormState = (settings: CopyTradeSettings) => ({
+interface FormState {
+  is_enabled: boolean;
+  trade_amount_sol: string;
+  max_slippage: string;
+  max_open_positions: string;
+  allow_additional_buys: boolean;
+  use_allowed_tokens_list: boolean;
+  min_sol_balance: string;
+}
+
+const convertSettingsToFormState = (settings: CopyTradeSettings): FormState => ({
   is_enabled: Boolean(settings?.is_enabled),
   trade_amount_sol: settings?.trade_amount_sol?.toString() || "",
   max_slippage: settings?.max_slippage
@@ -25,36 +36,69 @@ export const CopyTradeSettingsPanel = () => {
   const {
     copyTradeSettings: storedSettings,
     setCopyTradeSettings,
-    isLoading,
+    loadingStates,
+    error,
+    fetchCopyTradeSettings
   } = useWalletTrackerStore();
+
   const [isSaving, setIsSaving] = useState(false);
-  const [formState, setFormState] = useState(() =>
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [formState, setFormState] = useState<FormState | null>(() =>
     storedSettings ? convertSettingsToFormState(storedSettings) : null
   );
 
-  useEffect(() => {
-    if (!formState && storedSettings) {
-      // Only update if formState is null
-      console.log("Initial settings load:", storedSettings);
-      setFormState(convertSettingsToFormState(storedSettings));
-    }
-  }, [storedSettings, formState]);
+  if (loadingStates.copyTradeSettings) {
+    return <CopyTradeSettingsSkeleton />;
+  }
 
-  const handleUpdateSettings = (key: string, value: string | boolean) => {
-    setFormState((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        [key]: value,
-      };
-    });
+  if (error) {
+    return (
+      <ComponentError
+        title="Failed to Load Settings"
+        message={error}
+        onRetry={fetchCopyTradeSettings}
+      />
+    );
+  }
+
+  if (!formState || !storedSettings) {
+    return (
+      <ComponentError
+        title="Settings Unavailable"
+        message="Could not load copy trade settings. Please try again later."
+        onRetry={fetchCopyTradeSettings}
+      />
+    );
+  }
+
+  const handleUpdateSettings = (key: keyof FormState, value: string | boolean) => {
+    setFormState((prev) => prev ? { ...prev, [key]: value } : prev);
+    setSaveError(null);
+  };
+
+  const validateSettings = (settings: FormState) => {
+    if (settings.trade_amount_sol && parseFloat(settings.trade_amount_sol) <= 0) {
+      throw new Error("Trade amount must be greater than 0");
+    }
+    if (settings.max_slippage && (parseFloat(settings.max_slippage) <= 0 || parseFloat(settings.max_slippage) > 100)) {
+      throw new Error("Slippage must be between 0 and 100");
+    }
+    if (settings.max_open_positions && parseInt(settings.max_open_positions) <= 0) {
+      throw new Error("Maximum open positions must be greater than 0");
+    }
+    if (settings.min_sol_balance && parseFloat(settings.min_sol_balance) < 0) {
+      throw new Error("Minimum SOL balance cannot be negative");
+    }
   };
 
   const handleSaveSettings = async () => {
     if (!storedSettings?.tracked_wallet_id || !formState) return;
     setIsSaving(true);
+    setSaveError(null);
 
     try {
+      validateSettings(formState);
+
       const settingsToSave = {
         ...storedSettings,
         is_enabled: formState.is_enabled,
@@ -83,36 +127,22 @@ export const CopyTradeSettingsPanel = () => {
         }
       );
 
-      if (!response.ok) throw new Error("Failed to save settings");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Failed to save settings");
+      }
+
       const savedSettings = await response.json();
-
       setCopyTradeSettings(savedSettings);
-
       toast.success("Settings saved successfully");
     } catch (error) {
-      console.error("Save settings error:", error);
-      toast.error("Failed to save settings");
+      const errorMessage = error instanceof Error ? error.message : "Failed to save settings";
+      setSaveError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
   };
-
-  if (isLoading || !storedSettings) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Skeleton className="h-6 w-32" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>
@@ -122,7 +152,7 @@ export const CopyTradeSettingsPanel = () => {
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Enabled</span>
             <Switch
-              checked={formState?.is_enabled || false}
+              checked={formState.is_enabled}
               onCheckedChange={(checked) =>
                 handleUpdateSettings("is_enabled", checked)
               }
@@ -131,12 +161,18 @@ export const CopyTradeSettingsPanel = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {saveError && (
+          <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+            {saveError}
+          </div>
+        )}
+
         <div className="grid gap-6">
           <div className="space-y-2">
             <Label>Trade Amount (SOL)</Label>
             <Input
               type="number"
-              value={formState?.trade_amount_sol || ""}
+              value={formState.trade_amount_sol}
               onChange={(e) =>
                 handleUpdateSettings("trade_amount_sol", e.target.value)
               }
@@ -150,7 +186,7 @@ export const CopyTradeSettingsPanel = () => {
             <Label>Max Slippage (%)</Label>
             <Input
               type="number"
-              value={formState?.max_slippage || ""}
+              value={formState.max_slippage}
               onChange={(e) =>
                 handleUpdateSettings("max_slippage", e.target.value)
               }
@@ -165,7 +201,7 @@ export const CopyTradeSettingsPanel = () => {
             <Label>Max Open Positions</Label>
             <Input
               type="number"
-              value={formState?.max_open_positions || ""}
+              value={formState.max_open_positions}
               onChange={(e) =>
                 handleUpdateSettings("max_open_positions", e.target.value)
               }
@@ -178,7 +214,7 @@ export const CopyTradeSettingsPanel = () => {
           <div className="flex items-center justify-between">
             <Label>Allow Additional Buys</Label>
             <Switch
-              checked={formState?.allow_additional_buys || false}
+              checked={formState.allow_additional_buys}
               onCheckedChange={(checked) =>
                 handleUpdateSettings("allow_additional_buys", checked)
               }
@@ -188,7 +224,7 @@ export const CopyTradeSettingsPanel = () => {
           <div className="flex items-center justify-between">
             <Label>Use Allowed Tokens List</Label>
             <Switch
-              checked={formState?.use_allowed_tokens_list || false}
+              checked={formState.use_allowed_tokens_list}
               onCheckedChange={(checked) =>
                 handleUpdateSettings("use_allowed_tokens_list", checked)
               }

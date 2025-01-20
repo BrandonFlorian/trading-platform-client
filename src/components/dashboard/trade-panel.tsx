@@ -4,15 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { ComponentError } from "@/components/ui/error/component-error";
 
 const QUICK_BUY_AMOUNTS = [0.01, 0.05, 0.1, 0.5];
 const QUICK_SELL_PERCENTAGES = [25, 50, 75, 100];
@@ -21,75 +16,149 @@ const MAX_SOL_AMOUNT = 100;
 
 type DexType = "pump_fun" | "raydium";
 
+interface ValidationError {
+  message: string;
+  field?: string;
+}
+
 export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
   const [customBuyAmount, setCustomBuyAmount] = useState("");
   const [customSellAmount, setCustomSellAmount] = useState("");
   const [selectedDex, setSelectedDex] = useState<DexType>("pump_fun");
+  const [error, setError] = useState<ValidationError | null>(null);
+  const [isExecuting, setIsExecuting] = useState(false);
+
   const tokenBalance = parseFloat(token.balance);
 
+  const validateBuyAmount = (amount: number): ValidationError | null => {
+    if (isNaN(amount)) {
+      return { message: "Please enter a valid number", field: "buy" };
+    }
+    if (amount < MIN_SOL_AMOUNT) {
+      return { message: `Minimum amount is ${MIN_SOL_AMOUNT} SOL`, field: "buy" };
+    }
+    if (amount > MAX_SOL_AMOUNT) {
+      return { message: `Maximum amount is ${MAX_SOL_AMOUNT} SOL`, field: "buy" };
+    }
+    return null;
+  };
+
+  const validateSellAmount = (amount: number): ValidationError | null => {
+    if (isNaN(amount)) {
+      return { message: "Please enter a valid number", field: "sell" };
+    }
+    if (amount <= 0) {
+      return { message: "Amount must be greater than 0", field: "sell" };
+    }
+    if (amount > tokenBalance) {
+      return { message: `Insufficient balance. Max: ${tokenBalance} ${token.symbol}`, field: "sell" };
+    }
+    return null;
+  };
+
   const handleQuickBuy = async (amount: number) => {
+    const validationError = validateBuyAmount(amount);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
+    setIsExecuting(true);
     try {
       await onTrade("buy", amount, selectedDex);
       toast.success(`Buy order placed for ${amount} SOL of ${token.symbol}`);
     } catch (error) {
-      console.error("Buy failed:", error);
+      const message = error instanceof Error ? error.message : "Transaction failed";
+      setError({ message });
+      toast.error(message);
+    } finally {
+      setIsExecuting(false);
     }
   };
 
   const handleCustomBuy = async () => {
     const amount = parseFloat(customBuyAmount);
-    if (isNaN(amount) || amount < MIN_SOL_AMOUNT || amount > MAX_SOL_AMOUNT) {
-      toast.error(
-        `Please enter an amount between ${MIN_SOL_AMOUNT} and ${MAX_SOL_AMOUNT} SOL`
-      );
+    const validationError = validateBuyAmount(amount);
+    if (validationError) {
+      setError(validationError);
       return;
     }
-    await handleQuickBuy(amount);
-  };
 
-  const handleCustomSell = async () => {
-    const amount = parseFloat(customSellAmount);
-    if (isNaN(amount) || amount <= 0 || amount > tokenBalance) {
-      toast.error(
-        `Please enter an amount between 0 and ${tokenBalance} ${token.symbol}`
-      );
-      return;
-    }
-    try {
-      await onTrade("sell", amount, selectedDex);
-      toast.success(`Sell order placed for ${amount} ${token.symbol}`);
-    } catch (error) {
-      console.error("Sell failed:", error);
-    }
+    await handleQuickBuy(amount);
   };
 
   const handleQuickSell = async (percentage: number) => {
     const amount = (tokenBalance * percentage) / 100;
+    const validationError = validateSellAmount(amount);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
+    setIsExecuting(true);
     try {
       await onTrade("sell", amount, selectedDex);
       toast.success(`Sell order placed for ${percentage}% of ${token.symbol}`);
     } catch (error) {
-      console.error("Sell failed:", error);
+      const message = error instanceof Error ? error.message : "Transaction failed";
+      setError({ message });
+      toast.error(message);
+    } finally {
+      setIsExecuting(false);
     }
   };
+
+  const handleCustomSell = async () => {
+    const amount = parseFloat(customSellAmount);
+    const validationError = validateSellAmount(amount);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
+    setIsExecuting(true);
+    try {
+      await onTrade("sell", amount, selectedDex);
+      toast.success(`Sell order placed for ${amount} ${token.symbol}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Transaction failed";
+      setError({ message });
+      toast.error(message);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Trade {token.symbol}</span>
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
+        {error && (
+          <div className="mb-4 p-3 text-sm text-destructive bg-destructive/10 rounded-md flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {error.message}
+          </div>
+        )}
+
         <div className="mb-4">
-          <label className="text-sm font-medium mb-1 block">Select DEX</label>
-          <Select
-            value={selectedDex}
-            onValueChange={(value) => setSelectedDex(value as DexType)}
-          >
+          <Select value={selectedDex} onValueChange={(value) => setSelectedDex(value as DexType)}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue defaultValue={selectedDex} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="pump_fun">Pump.fun</SelectItem>
@@ -111,7 +180,7 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
                   key={amount}
                   variant="outline"
                   onClick={() => handleQuickBuy(amount)}
-                  disabled={isLoading}
+                  disabled={isExecuting}
                   className="w-full"
                 >
                   {amount} SOL
@@ -126,18 +195,21 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
                 max={MAX_SOL_AMOUNT}
                 step={0.001}
                 value={customBuyAmount}
-                onChange={(e) => setCustomBuyAmount(e.target.value)}
+                onChange={(e) => {
+                  setCustomBuyAmount(e.target.value);
+                  setError(null);
+                }}
                 placeholder="Custom amount (SOL)"
-                disabled={isLoading}
+                disabled={isExecuting}
+                className={error?.field === "buy" ? "border-destructive" : ""}
               />
               <Button
                 onClick={handleCustomBuy}
-                disabled={
-                  isLoading ||
-                  !customBuyAmount ||
-                  parseFloat(customBuyAmount) <= 0
-                }
+                disabled={isExecuting || !customBuyAmount}
               >
+                {isExecuting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
                 Buy
               </Button>
             </div>
@@ -150,7 +222,7 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
                   key={percentage}
                   variant="outline"
                   onClick={() => handleQuickSell(percentage)}
-                  disabled={isLoading || tokenBalance <= 0}
+                  disabled={isExecuting || tokenBalance <= 0}
                   className="w-full"
                 >
                   {percentage}%
@@ -165,18 +237,21 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
                 max={tokenBalance}
                 step={0.000001}
                 value={customSellAmount}
-                onChange={(e) => setCustomSellAmount(e.target.value)}
+                onChange={(e) => {
+                  setCustomSellAmount(e.target.value);
+                  setError(null);
+                }}
                 placeholder={`Amount (${token.symbol})`}
-                disabled={isLoading}
+                disabled={isExecuting}
+                className={error?.field === "sell" ? "border-destructive" : ""}
               />
               <Button
                 onClick={handleCustomSell}
-                disabled={
-                  isLoading ||
-                  !customSellAmount ||
-                  parseFloat(customSellAmount) <= 0
-                }
+                disabled={isExecuting || !customSellAmount}
               >
+                {isExecuting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
                 Sell
               </Button>
             </div>
