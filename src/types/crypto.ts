@@ -107,4 +107,4 @@ export interface WalletStore {
   setEndpoint: (endpoint: string) => void;
 }
 
-export type DexType = "pump_fun" | "raydium";
+export type DexType = "pump_fun" | "raydium" | "jupiter";

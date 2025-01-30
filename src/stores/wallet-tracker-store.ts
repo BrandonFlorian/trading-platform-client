@@ -1,6 +1,5 @@
-// stores/walletTrackerStore.ts
 import { create } from "zustand";
-import { WalletUpdate, CopyTradeSettings, Notification } from "@/types";
+import { WalletUpdate, CopyTradeSettings, Notification, TrackedWallet } from "@/types";
 import { API_BASE_URL } from "@/config/constants";
 import { DexType } from "@/types/crypto";
 
@@ -20,6 +19,9 @@ interface WalletTrackerState {
   // Notifications
   notifications: Notification[];
 
+  // Tracked Wallets
+  trackedWallets?: TrackedWallet[];
+
   // Actions
   setServerWallet: (wallet: WalletUpdate) => void;
   setCopyTradeSettings: (settings: CopyTradeSettings) => void;
@@ -28,6 +30,7 @@ interface WalletTrackerState {
   ) => void;
   addNotification: (notification: Notification) => void;
   clearNotifications: () => void;
+  addTrackedWallet: (wallet: TrackedWallet) => void;
 
   fetchWalletInfo: () => Promise<void>;
   fetchCopyTradeSettings: () => Promise<void>;
@@ -55,6 +58,7 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
   isSettingsEnabled: false,
   connectionStatus: "disconnected",
   notifications: [],
+  trackedWallets: [],
 
   setServerWallet: (wallet) => set({ serverWallet: wallet }),
 
@@ -66,6 +70,12 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
     set((state) => ({
       notifications: [notification, ...state.notifications].slice(0, 50), // Keep last 50
     })),
+
+  addTrackedWallet: (wallet) => {
+    set((state) => ({
+      trackedWallets: [...(state.trackedWallets || []), wallet]
+    }))
+  },
 
   clearNotifications: () => set({ notifications: [] }),
 

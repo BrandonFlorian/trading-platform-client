@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -25,20 +27,28 @@ export const CopyTradeSettingsPanel = () => {
   const {
     copyTradeSettings: storedSettings,
     setCopyTradeSettings,
+    fetchCopyTradeSettings,
     isLoading,
   } = useWalletTrackerStore();
-  const [isSaving, setIsSaving] = useState(false);
+
   const [formState, setFormState] = useState(() =>
     storedSettings ? convertSettingsToFormState(storedSettings) : null
   );
+  
+  useEffect(() => {
+    fetchCopyTradeSettings().then(() => {
+      console.log('Settings fetched:', storedSettings);
+    }).catch(error => {
+      console.error('Error fetching settings:', error);
+      toast.error('Failed to fetch settings');
+    });
+  }, [fetchCopyTradeSettings]);
 
   useEffect(() => {
-    if (!formState && storedSettings) {
-      // Only update if formState is null
-      console.log("Initial settings load:", storedSettings);
+    if (storedSettings) {
       setFormState(convertSettingsToFormState(storedSettings));
     }
-  }, [storedSettings, formState]);
+  }, [storedSettings]);
 
   const handleUpdateSettings = (key: string, value: string | boolean) => {
     setFormState((prev) => {
@@ -52,8 +62,7 @@ export const CopyTradeSettingsPanel = () => {
 
   const handleSaveSettings = async () => {
     if (!storedSettings?.tracked_wallet_id || !formState) return;
-    setIsSaving(true);
-
+    
     try {
       const settingsToSave = {
         ...storedSettings,
@@ -85,15 +94,14 @@ export const CopyTradeSettingsPanel = () => {
 
       if (!response.ok) throw new Error("Failed to save settings");
       const savedSettings = await response.json();
-
       setCopyTradeSettings(savedSettings);
 
+      // Refetch settings after successful save
+      await fetchCopyTradeSettings();
       toast.success("Settings saved successfully");
     } catch (error) {
       console.error("Save settings error:", error);
       toast.error("Failed to save settings");
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -199,9 +207,8 @@ export const CopyTradeSettingsPanel = () => {
         <Button
           className="w-full"
           onClick={handleSaveSettings}
-          disabled={isSaving}
         >
-          {isSaving ? "Saving..." : "Save Settings"}
+          Save Settings
         </Button>
       </CardContent>
     </Card>
