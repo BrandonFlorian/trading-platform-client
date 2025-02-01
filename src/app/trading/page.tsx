@@ -20,10 +20,7 @@ export default function TradingPage() {
           </div>
         </div>
         
-        <div className="xl:col-span-3">
-          <CompactWalletPanel />
-        </div>
-      </div>
+       </div>
     </TradingLayout>
   )
 }

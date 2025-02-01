@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -24,7 +24,7 @@ interface ServerWalletCardProps {
   displayName?: string;
 }
 
-export const ServerWalletCard = ({ displayName = "Server Wallet" }: ServerWalletCardProps) => {
+export function ServerWalletCard({ displayName = "Server Wallet" }: ServerWalletCardProps) {
   const {
     serverWallet,
     isLoading,
@@ -32,13 +32,21 @@ export const ServerWalletCard = ({ displayName = "Server Wallet" }: ServerWallet
     executeBuy,
     executeSell,
     copyTradeSettings,
+    fetchWalletInfo,
   } = useWalletTrackerStore();
+
   const [selectedToken, setSelectedToken] = useState<TokenInfo | null>(null);
-  const [showNewTokenDialog, setShowNewTokenDialog] = useState<boolean>(false);
-  const [newTokenAddress, setNewTokenAddress] = useState<string>("");
+  const [showNewTokenDialog, setShowNewTokenDialog] = useState(false);
+  const [newTokenAddress, setNewTokenAddress] = useState("");
+  const [isTradeDialogOpen, setIsTradeDialogOpen] = useState(false);
+
+  useEffect(() => {
+    fetchWalletInfo();
+  }, [fetchWalletInfo]);
 
   const handleCloseTrade = () => {
     setSelectedToken(null);
+    setIsTradeDialogOpen(false);
   };
 
   const handleCloseNewToken = () => {
@@ -46,30 +54,46 @@ export const ServerWalletCard = ({ displayName = "Server Wallet" }: ServerWallet
     setNewTokenAddress("");
   };
 
-  const handleTrade = async (type: TradeType, amount: number, dex: DexType) => {
-    if (!selectedToken && type === "sell") return;
+  const handleTokenTrade = (token: TokenInfo) => {
+    if (token && token.address) {
+      setSelectedToken(token);
+      setIsTradeDialogOpen(true);
+    }
+  };
 
+  const handleTrade = async (type: TradeType, amount: number, dex: DexType) => {
     try {
       if (type === "buy") {
+        const tokenAddress = selectedToken ? selectedToken.address : newTokenAddress;
+        if (!tokenAddress) {
+          toast.error("No token address provided");
+          return;
+        }
+
         await executeBuy(
-          selectedToken?.address || newTokenAddress,
+          tokenAddress,
           amount,
           copyTradeSettings?.max_slippage || 0.2,
           dex
         );
       } else {
+        if (!selectedToken?.address) {
+          toast.error("No token selected for sell");
+          return;
+        }
+
         await executeSell(
-          selectedToken!.address,
+          selectedToken.address,
           amount,
           copyTradeSettings?.max_slippage || 0.2,
           dex
         );
       }
+
       handleCloseTrade();
       handleCloseNewToken();
     } catch (error) {
       console.error("Trade failed:", error);
-      // Error handling is done in the store
     }
   };
 
@@ -78,15 +102,16 @@ export const ServerWalletCard = ({ displayName = "Server Wallet" }: ServerWallet
       toast.error("Please enter a token address");
       return;
     }
-    // Create a minimal token info object for the trade panel
+
     const tokenInfo: TokenInfo = {
       address: newTokenAddress,
       symbol: "NEW",
       name: "New Token",
       balance: "0",
       decimals: 9,
-      market_cap: 0,
+      market_cap: 0
     };
+
     setSelectedToken(tokenInfo);
     setShowNewTokenDialog(false);
   };
@@ -122,7 +147,7 @@ export const ServerWalletCard = ({ displayName = "Server Wallet" }: ServerWallet
         </CardHeader>
         <CardContent className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex justify-between items-center">
+            <div key={`skeleton-${i}`} className="flex justify-between items-center">
               <div className="flex items-center gap-4">
                 <Skeleton className="h-12 w-12 rounded-full" />
                 <div className="space-y-2">
@@ -163,40 +188,36 @@ export const ServerWalletCard = ({ displayName = "Server Wallet" }: ServerWallet
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {serverWallet.tokens?.map((token) => (
+          {serverWallet.tokens?.map((token, index) => (
             <TokenRow
-              key={token.mint}
+              key={`${token.mint}-${index}`}
               token={{
                 address: token.mint,
                 symbol: token.symbol,
                 name: token.name,
                 balance: token.raw_balance,
                 market_cap: token.market_cap,
-                decimals: token.decimals,
-                price: token.price,
-                logo: token.logo
+                decimals: token.decimals
               }}
-              onClickTrade={() => setSelectedToken({
+              onClickTrade={() => handleTokenTrade({
                 address: token.mint,
                 symbol: token.symbol,
                 name: token.name,
                 balance: token.raw_balance,
                 market_cap: token.market_cap,
-                decimals: token.decimals,
-                price: token.price,
-                logo: token.logo
+                decimals: token.decimals
               })}
             />
           ))}
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedToken} onOpenChange={() => handleCloseTrade()}>
+      <Dialog open={isTradeDialogOpen} onOpenChange={setIsTradeDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Trade</DialogTitle>
             <DialogDescription>
-              Trade {selectedToken?.symbol} on {}
+              Trade {selectedToken?.symbol}
             </DialogDescription>
           </DialogHeader>
           {selectedToken && (
@@ -211,7 +232,7 @@ export const ServerWalletCard = ({ displayName = "Server Wallet" }: ServerWallet
 
       <Dialog
         open={showNewTokenDialog}
-        onOpenChange={() => handleCloseNewToken()}
+        onOpenChange={handleCloseNewToken}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -234,4 +255,4 @@ export const ServerWalletCard = ({ displayName = "Server Wallet" }: ServerWallet
       </Dialog>
     </>
   );
-};
+}
