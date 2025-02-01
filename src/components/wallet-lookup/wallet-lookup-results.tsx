@@ -4,13 +4,13 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { TokenRow } from '@/components/dashboard/token-row'
-import { WalletLookupResult, TrackedWallet } from '@/types'
+import { TrackedWallet, WalletUpdate } from '@/types'
 import { useWalletTrackerStore } from '@/stores/wallet-tracker-store'
 import { API_BASE_URL } from '@/config/constants'
 import { toast } from 'sonner'
 
 interface WalletLookupResultsProps {
-  walletDetails: WalletLookupResult
+  walletDetails: WalletUpdate
 }
 
 export function WalletLookupResults({ walletDetails }: WalletLookupResultsProps) {
@@ -65,30 +65,27 @@ export function WalletLookupResults({ walletDetails }: WalletLookupResultsProps)
       </CardHeader>
       <CardContent>
         <div className="mb-4">
-          <p className="font-medium">Wallet Address: {walletDetails.address}</p>
-          <p>SOL Balance: {walletDetails.solBalance.toFixed(4)} SOL</p>
+          <span className="font-medium">SOL Balance:</span> {walletDetails.balance !== undefined ? walletDetails.balance.toFixed(4) : '0.0000'} SOL
         </div>
-        {walletDetails.tokens.length > 0 ? (
-          walletDetails.tokens.map((token, index) => {
-            const transformedToken = {
-              address: token.address,
-              symbol: token.symbol,
-              name: token.name,
-              balance: token.balance?.toString() || '0',
-              market_cap: token.market_cap,
-              decimals: token.decimals
-            }
-
-            return (
-              <TokenRow 
-                key={`${token.address}-${index}`}
-                token={transformedToken}
-                onClickTrade={() => {/* Implement trade logic */}}
-              />
-            )
-          })
+        {walletDetails.tokens && walletDetails.tokens.length > 0 ? (
+          walletDetails.tokens.map((token, index) => (
+            <TokenRow 
+              key={`${token.mint}-${index}`}
+              token={{
+                address: token.mint,
+                symbol: token.symbol,
+                name: token.name,
+                balance: token.raw_balance,
+                market_cap: token.market_cap,
+                decimals: token.decimals
+              }} 
+              onClickTrade={() => {/* Implement trade logic */}}
+            />
+          ))
         ) : (
-          <p className="text-muted-foreground">No tokens found in this wallet</p>
+          <div className="text-center text-muted-foreground">
+            No tokens found in this wallet
+          </div>
         )}
       </CardContent>
     </Card>
