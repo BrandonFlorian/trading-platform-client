@@ -1,6 +1,5 @@
-export const WALLET_TRACKER_WEBSOCKET_URL: string =
-  process.env.NEXT_PUBLIC_WEBSOCKET_URL!;
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL!;
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+export const WALLET_TRACKER_WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:3000/ws';
 
 export const HTTP_STATUS_CODES = {
   OK: 200,

@@ -1,6 +1,4 @@
-"use client"
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { TokenTradeProps } from "@/types/ui";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,21 +11,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Image from "next/image";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { DexType } from "@/types/crypto";
 
 const QUICK_BUY_AMOUNTS = [0.01, 0.05, 0.1, 0.5];
 const QUICK_SELL_PERCENTAGES = [25, 50, 75, 100];
 const MIN_SOL_AMOUNT = 0.000001;
 const MAX_SOL_AMOUNT = 100;
 
-type DexType = "pump_fun" | "raydium";
+const DEX_OPTIONS = [
+  {
+    value: "jupiter",
+    label: "Jupiter",
+    icon: "/dexes/jupiter.svg"
+  },
+  {
+    value: "raydium",
+    label: "Raydium",
+    icon: "/dexes/raydium.svg"
+  },
+  {
+    value: "pump_fun",
+    label: "Pump.fun",
+    icon: "/dexes/pump.svg"
+  }
+];
 
 export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
   const [customBuyAmount, setCustomBuyAmount] = useState("");
   const [customSellAmount, setCustomSellAmount] = useState("");
-  const [selectedDex, setSelectedDex] = useState<DexType>("pump_fun");
-  const tokenBalance = token.balance ? parseFloat(token.balance) : 0;
+  const [selectedDex, setSelectedDex] = useState<DexType>("jupiter");
+  const tokenBalance = parseFloat(token.balance);
 
   const handleQuickBuy = async (amount: number) => {
     try {
@@ -75,11 +91,32 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
     }
   };
 
+  const getTokenIcon = () => {
+    try {
+      return `/icons/${token.symbol.toLowerCase()}.svg`;
+    } catch {
+      return null;
+    }
+  };
+
   return (
     <>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Trade {token.symbol || ''}</span>
+          <div className="flex items-center gap-2">
+            {getTokenIcon() && (
+              <div className="relative w-6 h-6">
+                <Image
+                  src={getTokenIcon()!}
+                  alt={token.symbol}
+                  width={24}
+                  height={24}
+                  className="rounded-full"
+                />
+              </div>
+            )}
+            <span>Trade {token.symbol}</span>
+          </div>
           {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
         </CardTitle>
       </CardHeader>
@@ -90,12 +127,27 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
             value={selectedDex}
             onValueChange={(value) => setSelectedDex(value as DexType)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="pump_fun">Pump.fun</SelectItem>
-              <SelectItem value="raydium">Raydium</SelectItem>
+              {DEX_OPTIONS.map((dex) => (
+                <SelectItem
+                  key={dex.value}
+                  value={dex.value}
+                  className="flex items-center gap-2"
+                >
+                  <div className="relative w-4 h-4">
+                    <Image
+                      src={dex.icon}
+                      alt={dex.label}
+                      width={16}
+                      height={16}
+                    />
+                  </div>
+                  {dex.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -168,7 +220,7 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
                 step={0.000001}
                 value={customSellAmount}
                 onChange={(e) => setCustomSellAmount(e.target.value)}
-                placeholder={`Amount (${token.symbol || ''})`}
+                placeholder={`Amount (${token.symbol})`}
                 disabled={isLoading}
               />
               <Button
@@ -184,7 +236,7 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
             </div>
 
             <div className="text-sm text-muted-foreground text-center">
-              Available: {token.balance || '0'} {token.symbol || ''}
+              Available: {token.balance} {token.symbol}
             </div>
           </TabsContent>
         </Tabs>
