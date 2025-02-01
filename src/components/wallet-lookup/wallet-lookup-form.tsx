@@ -34,7 +34,7 @@ export function WalletLookupForm({ onLookupResult }: WalletLookupFormProps) {
     setIsLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/wallet/${address}`)
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch wallet details')
       }
@@ -42,16 +42,19 @@ export function WalletLookupForm({ onLookupResult }: WalletLookupFormProps) {
       const data = await response.json()
       const result = {
         address: address,
+        balance: data.sol_balance,
+        tokens: data.tokens
+      }
+
+      const lookupResult = {
+        address: address,
+        balance: data.sol_balance,
         solBalance: data.sol_balance,
         tokens: data.tokens
       }
-      
-      onLookupResult(result)
-      addRecentWallet({
-        address: address,
-        balance: data.sol_balance,
-        tokens: data.tokens
-      })
+
+      onLookupResult(lookupResult)
+      addRecentWallet(lookupResult)
 
       toast.success('Wallet details retrieved successfully')
     } catch (error) {
@@ -68,13 +71,13 @@ export function WalletLookupForm({ onLookupResult }: WalletLookupFormProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex space-x-2">
-          <Input 
-            placeholder="Enter Solana wallet address" 
+          <Input
+            placeholder="Enter Solana wallet address"
             value={walletAddress}
             onChange={(e) => setWalletAddress(e.target.value)}
           />
-          <Button 
-            onClick={() => handleLookup()} 
+          <Button
+            onClick={() => handleLookup()}
             disabled={isLoading}
           >
             {isLoading ? 'Looking up...' : 'Lookup'}

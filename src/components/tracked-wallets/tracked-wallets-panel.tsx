@@ -58,8 +58,13 @@ export const TrackedWalletsPanel = () => {
       if (!response.ok) throw new Error('Failed to fetch wallet details')
 
       const details = await response.json()
-      setWalletDetails(details)
+      setWalletDetails({
+        balance: details.sol_balance,
+        address: details.address,
+        tokens: details.tokens
+      })
     } catch (error) {
+      console.error('Error fetching wallet details:', error)
       toast.error('Failed to load wallet details')
       setWalletDetails(null)
     } finally {
@@ -80,36 +85,30 @@ export const TrackedWalletsPanel = () => {
     }
   }
 
-  const handleTrade = async (type: 'buy' | 'sell', amount: number, dexType: string) => {
-    if (!selectedToken) return;
-
-    setIsTradeLoading(true);
+  const handleTrade = async (type: 'buy' | 'sell', amount: number, dex: string) => {
+    setIsTradeLoading(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/trade`, {
+      const endpoint = type === 'buy' ? 'buy_token' : 'sell_token'
+      const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          token_address: selectedToken.address,
-          type,
-          amount,
-          dex: dexType
+          token_address: selectedToken?.address,
+          sol_quantity: type === 'buy' ? amount : undefined,
+          token_quantity: type === 'sell' ? amount : undefined,
+          slippage_tolerance: 0.2,
+          dex: dex
         })
-      });
+      })
 
-      if (!response.ok) {
-        throw new Error('Trade failed');
-      }
-
-      const result = await response.json();
-      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} order placed successfully`);
-      setIsTradeDialogOpen(false);
+      if (!response.ok) throw new Error('Trade failed')
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} order placed successfully`)
+      setIsTradeDialogOpen(false)
     } catch (error) {
-      toast.error('Failed to place trade order');
-      console.error(error);
+      toast.error('Failed to place trade order')
+      console.error('Trade error:', error)
     } finally {
-      setIsTradeLoading(false);
+      setIsTradeLoading(false)
     }
   }
 
@@ -171,7 +170,7 @@ export const TrackedWalletsPanel = () => {
             ) : walletDetails ? (
               <>
                 <div className="mb-4">
-                  <span className="font-medium">SOL Balance:</span> {walletDetails.balance !== undefined ? walletDetails.balance.toFixed(4) : '0.0000'} SOL
+                  <span>{walletDetails?.balance?.toFixed(4) || '0.0000'} SOL</span>
                 </div>
                 {walletDetails.tokens && walletDetails.tokens.length > 0 ? (
                   walletDetails.tokens.map((token, index) => (

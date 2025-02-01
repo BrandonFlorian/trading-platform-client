@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react";
 import { TokenTradeProps } from "@/types/ui";
 import { Input } from "@/components/ui/input";
@@ -25,7 +27,7 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
   const [customBuyAmount, setCustomBuyAmount] = useState("");
   const [customSellAmount, setCustomSellAmount] = useState("");
   const [selectedDex, setSelectedDex] = useState<DexType>("pump_fun");
-  const tokenBalance = parseFloat(token.balance);
+  const tokenBalance = token.balance ? parseFloat(token.balance) : 0;
 
   const handleQuickBuy = async (amount: number) => {
     try {
@@ -77,7 +79,7 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
     <>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Trade {token.symbol}</span>
+          <span>Trade {token.symbol || ''}</span>
           {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
         </CardTitle>
       </CardHeader>
@@ -166,7 +168,7 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
                 step={0.000001}
                 value={customSellAmount}
                 onChange={(e) => setCustomSellAmount(e.target.value)}
-                placeholder={`Amount (${token.symbol})`}
+                placeholder={`Amount (${token.symbol || ''})`}
                 disabled={isLoading}
               />
               <Button
@@ -182,7 +184,7 @@ export const TradePanel = ({ token, onTrade, isLoading }: TokenTradeProps) => {
             </div>
 
             <div className="text-sm text-muted-foreground text-center">
-              Available: {token.balance} {token.symbol}
+              Available: {token.balance || '0'} {token.symbol || ''}
             </div>
           </TabsContent>
         </Tabs>
