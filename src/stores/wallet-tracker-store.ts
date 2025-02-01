@@ -48,6 +48,10 @@ interface WalletTrackerState {
     slippageTolerance: number,
     dex: DexType
   ) => Promise<void>;
+
+  recentWallets: WalletUpdate[];
+  addRecentWallet: (wallet: WalletUpdate) => void;
+  clearRecentWallets: () => void;
 }
 
 export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
@@ -59,6 +63,7 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
   connectionStatus: "disconnected",
   notifications: [],
   trackedWallets: [],
+  recentWallets: [],
 
   setServerWallet: (wallet) => set({ serverWallet: wallet }),
 
@@ -215,4 +220,13 @@ export const useWalletTrackerStore = create<WalletTrackerState>((set, get) => ({
       set({ isLoading: false });
     }
   },
+
+  addRecentWallet: (wallet) => set((state) => ({
+    recentWallets: [
+      wallet,
+      ...state.recentWallets.filter(w => w.address !== wallet.address)
+    ].slice(0, 5)
+  })),
+
+  clearRecentWallets: () => set({ recentWallets: [] }),
 }));

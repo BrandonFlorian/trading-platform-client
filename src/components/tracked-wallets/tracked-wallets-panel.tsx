@@ -14,18 +14,23 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select'
-import { TrackedWallet, WalletUpdate } from '@/types'
+import { TrackedWallet, WalletUpdate, TokenInfo } from '@/types'
 import { API_BASE_URL } from '@/config/constants'
 import { TokenRow } from '@/components/dashboard/token-row'
+import { TradePanel } from '@/components/dashboard/trade-panel'
 import { NotificationsPanel } from '@/components/dashboard/notification-panel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 export const TrackedWalletsPanel = () => {
   const [trackedWallets, setTrackedWallets] = useState<TrackedWallet[]>([])
   const [selectedWallet, setSelectedWallet] = useState<TrackedWallet | null>(null)
   const [walletDetails, setWalletDetails] = useState<WalletUpdate | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedToken, setSelectedToken] = useState<TokenInfo | null>(null)
+  const [isTradeDialogOpen, setIsTradeDialogOpen] = useState(false)
+  const [isTradeLoading, setIsTradeLoading] = useState(false)
 
   useEffect(() => {
     fetchTrackedWallets()
@@ -75,7 +80,45 @@ export const TrackedWalletsPanel = () => {
       setSelectedWallet(wallet)
     }
   }
-  console.log("walletdetails", walletDetails?.tokens)
+
+  const handleTrade = async (type: 'buy' | 'sell', amount: number, dexType: string) => {
+    if (!selectedToken) return;
+
+    setIsTradeLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/trade`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token_address: selectedToken.address,
+          type,
+          amount,
+          dex: dexType
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Trade failed');
+      }
+
+      const result = await response.json();
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} order placed successfully`);
+      setIsTradeDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to place trade order');
+      console.error(error);
+    } finally {
+      setIsTradeLoading(false);
+    }
+  }
+
+  const handleTokenTrade = (token: TokenInfo) => {
+    setSelectedToken(token);
+    setIsTradeDialogOpen(true);
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 lg:p-8">
       <div className="mb-6">
@@ -135,7 +178,7 @@ export const TrackedWalletsPanel = () => {
                   {walletDetails.tokens && walletDetails.tokens.length > 0 ? (
                     walletDetails.tokens.map((token, index) => (
                       <TokenRow 
-                          key={`${token.mint}-${index}`}
+                        key={`${token.mint}-${index}`}
                         token={{
                           address: token.mint,
                           symbol: token.symbol,
@@ -144,7 +187,14 @@ export const TrackedWalletsPanel = () => {
                           market_cap: token.market_cap,
                           decimals: token.decimals
                         }} 
-                        onClickTrade={() => {/* Implement trade logic */}}
+                        onClickTrade={() => handleTokenTrade({
+                          address: token.mint,
+                          symbol: token.symbol,
+                          name: token.name,
+                          balance: token.raw_balance,
+                          market_cap: token.market_cap,
+                          decimals: token.decimals
+                        })}
                       />
                     ))
                   ) : (
@@ -166,6 +216,21 @@ export const TrackedWalletsPanel = () => {
           <NotificationsPanel />
         </div>
       </div>
+
+      <Dialog open={isTradeDialogOpen} onOpenChange={setIsTradeDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Trade Token</DialogTitle>
+          </DialogHeader>
+          {selectedToken && (
+            <TradePanel 
+              token={selectedToken} 
+              onTrade={handleTrade}
+              isLoading={isTradeLoading}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

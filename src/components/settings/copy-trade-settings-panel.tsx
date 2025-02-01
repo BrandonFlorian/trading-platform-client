@@ -31,22 +31,24 @@ export const CopyTradeSettingsPanel = () => {
     isLoading,
   } = useWalletTrackerStore();
 
-  const [formState, setFormState] = useState(() =>
-    storedSettings ? convertSettingsToFormState(storedSettings) : null
-  );
+  const [formState, setFormState] = useState<ReturnType<typeof convertSettingsToFormState> | null>(null);
   
   useEffect(() => {
-    fetchCopyTradeSettings().then(() => {
-      console.log('Settings fetched:', storedSettings);
-    }).catch(error => {
-      console.error('Error fetching settings:', error);
-      toast.error('Failed to fetch settings');
-    });
+    const initializeSettings = async () => {
+      try {
+        await fetchCopyTradeSettings();
+      } catch (error) {
+        toast.error('Failed to fetch settings');
+      }
+    };
+
+    initializeSettings();
   }, [fetchCopyTradeSettings]);
 
   useEffect(() => {
     if (storedSettings) {
-      setFormState(convertSettingsToFormState(storedSettings));
+      const newFormState = convertSettingsToFormState(storedSettings);
+      setFormState(newFormState);
     }
   }, [storedSettings]);
 
@@ -95,9 +97,6 @@ export const CopyTradeSettingsPanel = () => {
       if (!response.ok) throw new Error("Failed to save settings");
       const savedSettings = await response.json();
       setCopyTradeSettings(savedSettings);
-
-      // Refetch settings after successful save
-      await fetchCopyTradeSettings();
       toast.success("Settings saved successfully");
     } catch (error) {
       console.error("Save settings error:", error);

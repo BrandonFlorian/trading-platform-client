@@ -20,7 +20,11 @@ import { toast } from "sonner";
 import { DexType } from "@/types/crypto";
 import { TradeType } from "@/types/ui";
 
-export const ServerWalletCard = () => {
+interface ServerWalletCardProps {
+  displayName?: string;
+}
+
+export const ServerWalletCard = ({ displayName = "Server Wallet" }: ServerWalletCardProps) => {
   const {
     serverWallet,
     isLoading,
@@ -144,7 +148,7 @@ export const ServerWalletCard = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex justify-between items-center">
-            <span>Server Wallet</span>
+            <span>{displayName}</span>
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
@@ -159,6 +163,31 @@ export const ServerWalletCard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {serverWallet.tokens?.map((token) => (
+            <TokenRow
+              key={token.mint}
+              token={{
+                address: token.mint,
+                symbol: token.symbol,
+                name: token.name,
+                balance: token.raw_balance,
+                market_cap: token.market_cap,
+                decimals: token.decimals,
+                price: token.price,
+                logo: token.logo
+              }}
+              onClickTrade={() => setSelectedToken({
+                address: token.mint,
+                symbol: token.symbol,
+                name: token.name,
+                balance: token.raw_balance,
+                market_cap: token.market_cap,
+                decimals: token.decimals,
+                price: token.price,
+                logo: token.logo
+              })}
+            />
+          ))}
         </CardContent>
       </Card>
 
