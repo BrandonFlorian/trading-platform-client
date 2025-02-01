@@ -37,7 +37,6 @@ export function WatchlistPanel({ children }: WatchlistPanelProps) {
   const { 
     tokens, 
     removeToken, 
-    clearWatchlist, 
     fetchWatchlists,
     watchlists,
     activeWatchlistId,
@@ -66,13 +65,13 @@ export function WatchlistPanel({ children }: WatchlistPanelProps) {
 
   const handleClearWatchlist = async () => {
     try {
-      await clearWatchlist()
+      //await clearWatchlist()
       toast.success('Watchlist cleared')
     } catch (error) {
       toast.error('Failed to clear watchlist')
     }
   }
-
+console.log("tokens", tokens)
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -137,7 +136,7 @@ export function WatchlistPanel({ children }: WatchlistPanelProps) {
               </div>
             ) : (
               <ScrollArea className="h-full">
-                <div className="divide-y">
+                <div className="divide-y" key={activeWatchlistId}>
                   {tokens.map((token) => (
                     <div 
                       key={token.address} 

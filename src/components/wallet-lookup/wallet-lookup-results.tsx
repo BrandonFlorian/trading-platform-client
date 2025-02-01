@@ -69,13 +69,24 @@ export function WalletLookupResults({ walletDetails }: WalletLookupResultsProps)
           <p>SOL Balance: {walletDetails.solBalance.toFixed(4)} SOL</p>
         </div>
         {walletDetails.tokens.length > 0 ? (
-          walletDetails.tokens.map((token, index) => (
-            <TokenRow 
-              key={`${token.address}-${index}`} 
-              token={token} 
-              onClickTrade={() => {/* Implement trade logic */}}
-            />
-          ))
+          walletDetails.tokens.map((token, index) => {
+            const transformedToken = {
+              address: token.address,
+              symbol: token.symbol,
+              name: token.name,
+              balance: token.balance?.toString() || '0',
+              market_cap: token.market_cap,
+              decimals: token.decimals
+            }
+
+            return (
+              <TokenRow 
+                key={`${token.address}-${index}`}
+                token={transformedToken}
+                onClickTrade={() => {/* Implement trade logic */}}
+              />
+            )
+          })
         ) : (
           <p className="text-muted-foreground">No tokens found in this wallet</p>
         )}

@@ -1,3 +1,4 @@
+"use client"
 import { useState } from "react";
 import { useWalletTrackerStore } from "@/stores/wallet-tracker-store";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -158,13 +159,6 @@ export const ServerWalletCard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {serverWallet.tokens.map((token: TokenInfo) => (
-            <TokenRow
-              key={token.address}
-              token={token}
-              onClickTrade={() => setSelectedToken(token)}
-            />
-          ))}
         </CardContent>
       </Card>
 

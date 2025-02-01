@@ -1,9 +1,6 @@
+import React from 'react'
 import { TrackedWalletsPanel } from '@/components/tracked-wallets/tracked-wallets-panel'
 
-export default function Page() {
-  return (
-    <main>
-      <TrackedWalletsPanel />
-    </main>
-  );
+export default function TrackedWalletsPage() {
+  return <TrackedWalletsPanel />
 }

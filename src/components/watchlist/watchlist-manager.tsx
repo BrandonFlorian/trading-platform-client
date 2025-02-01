@@ -58,7 +58,6 @@ const WatchlistManager = () => {
     }
   
     try {
-      // Add proper typing to the created watchlist
       const createdWatchlist = await createWatchlist({
         name: newWatchlistName,
         description: newWatchlistDescription || undefined
@@ -68,7 +67,7 @@ const WatchlistManager = () => {
       setNewWatchlistName('')
       setNewWatchlistDescription('')
       
-      if (createdWatchlist?.id) { // Add null check
+      if (createdWatchlist?.id) {
         setActiveWatchlist(createdWatchlist.id)
       }
       
@@ -87,20 +86,12 @@ const WatchlistManager = () => {
     try {
       await deleteWatchlist(activeWatchlistId)
       toast.success('Watchlist deleted successfully')
-      
-      // Reset state after deletion
-      await fetchWatchlists()
     } catch (error) {
       toast.error('Failed to delete watchlist')
     }
   }
 
   const handleRemoveToken = async (address: string) => {
-    if (!activeWatchlistId) {
-      toast.error('No active watchlist')
-      return
-    }
-
     try {
       await removeToken(address)
       toast.success('Token removed from watchlist')
@@ -110,53 +101,21 @@ const WatchlistManager = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2 flex-1">
-          <Select 
-            value={activeWatchlistId || ''} 
-            onValueChange={setActiveWatchlist}
-          >
-            <SelectTrigger className="w-full max-w-xs">
-              <SelectValue placeholder="Select a watchlist" />
-            </SelectTrigger>
-            <SelectContent>
-              {watchlists.map((list, index) => (
-                <SelectItem 
-                  key={list.id || `watchlist-${index}`} 
-                  value={list.id || `temp-${index}`}
-                >
-                  {list.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {activeWatchlistId && (
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={handleDeleteWatchlist}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
               <Plus className="h-4 w-4 mr-2" />
-              New Watchlist
+              Create Watchlist
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Watchlist</DialogTitle>
             </DialogHeader>
-            
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
+            <div className="space-y-4">
+              <div>
                 <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
@@ -165,88 +124,87 @@ const WatchlistManager = () => {
                   placeholder="Enter watchlist name"
                 />
               </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
+              <div>
+                <Label htmlFor="description">Description (Optional)</Label>
                 <Input
                   id="description"
                   value={newWatchlistDescription}
                   onChange={(e) => setNewWatchlistDescription(e.target.value)}
-                  placeholder="Optional description"
+                  placeholder="Enter description"
                 />
               </div>
             </div>
-            
             <DialogFooter>
-              <Button 
-                onClick={handleCreateWatchlist} 
-                disabled={!newWatchlistName.trim()}
-              >
-                Create Watchlist
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateWatchlist}>
+                Create
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {activeWatchlistId && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDeleteWatchlist}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Watchlist
+          </Button>
+        )}
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <ScrollArea className="h-[300px]">
-            {tokens.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <p>No tokens in watchlist</p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {tokens.map((token, index) => (
-                  <div
-                    key={`${token.address}-${index}`}
-                    className="flex items-center justify-between p-4 hover:bg-accent"
-                  >
-                    <div>
-                      <div className="font-medium">{token.symbol}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {token.name}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveToken(token.address)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-        </CardContent>
-      </Card>
-      <div className="flex items-center space-x-2">
-  {watchlists.map((list) => (
-    <div 
-      key={list.id} // Use the watchlist ID as key
-      className="flex items-center space-x-2 p-2 border rounded-md"
-    >
-      <Checkbox
-        id={`watchlist-${list.id}`}
-        checked={activeWatchlistId === list.id}
-        onCheckedChange={(checked) => {
-          if (checked) {
-            setActiveWatchlist(list.id)
-          }
-        }}
-      />
-      <Label 
-        htmlFor={`watchlist-${list.id}`}
-        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-      >
-        {list.name}
-      </Label>
+      <div className="flex flex-wrap gap-2">
+        {watchlists.map((list) => (
+          <div 
+            key={`watchlist-${list.id}`}
+            className="flex items-center space-x-2 p-2 border rounded-md"
+          >
+            <Checkbox
+              id={`watchlist-checkbox-${list.id}`}
+              checked={activeWatchlistId === list.id}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setActiveWatchlist(list.id)
+                }
+              }}
+            />
+            <Label 
+              htmlFor={`watchlist-checkbox-${list.id}`}
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              {list.name}
+            </Label>
           </div>
         ))}
       </div>
+
+      {activeWatchlistId && tokens.length > 0 && (
+        <ScrollArea className="h-[300px]">
+          <div className="space-y-2">
+            {tokens.map((token) => (
+              <Card key={`token-${token.address}`}>
+                <CardContent className="flex justify-between items-center p-4">
+                  <div>
+                    <div className="font-medium">{token.symbol}</div>
+                    <div className="text-sm text-muted-foreground">{token.name}</div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveToken(token.address)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
     </div>
   )
 }

@@ -4,9 +4,10 @@ import { API_BASE_URL } from '@/config/constants'
 import { toast } from 'sonner'
 
 export interface Watchlist {
-  id: string 
+  id: string
   name: string
   description?: string
+  tokens: string[]
   created_at?: string
   updated_at?: string
 }
@@ -28,7 +29,7 @@ interface WatchlistState {
   error?: string
 
   // Watchlist operations
-  createWatchlist: (watchlist: Omit<Watchlist, 'id'>) => Promise<Watchlist> 
+  createWatchlist: (watchlist: Omit<Watchlist, 'id' | 'tokens'>) => Promise<Watchlist> 
   fetchWatchlists: () => Promise<void>
   deleteWatchlist: (id: string) => Promise<void>
   setActiveWatchlist: (id: string) => void
@@ -51,33 +52,30 @@ export const useWatchlistStore = create<WatchlistState>()(
       
       createWatchlist: async (watchlistData) => {
         try {
-          set({ isLoading: true });
+          set({ isLoading: true })
           const response = await fetch(`${API_BASE_URL}/watchlists`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(watchlistData)
-          });
+          })
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to create watchlist');
+            throw new Error('Failed to create watchlist')
           }
 
-          const newWatchlist: Watchlist = await response.json();
+          const newWatchlist: Watchlist = await response.json()
           
           set((state) => ({
             watchlists: [...state.watchlists, newWatchlist],
             activeWatchlistId: newWatchlist.id
-          }));
+          }))
 
-          toast.success('Watchlist created');
-          return newWatchlist; // Explicitly return the created watchlist
+          return newWatchlist
         } catch (error) {
-          console.error('Error creating watchlist:', error);
-          toast.error('Failed to create watchlist');
-          throw error;
+          console.error('Error creating watchlist:', error)
+          throw error
         } finally {
-          set({ isLoading: false });
+          set({ isLoading: false })
         }
       },
 
@@ -87,7 +85,7 @@ export const useWatchlistStore = create<WatchlistState>()(
           const response = await fetch(`${API_BASE_URL}/watchlists`)
           if (!response.ok) throw new Error('Failed to fetch watchlists')
           
-          const watchlists = await response.json()
+          const watchlists: Watchlist[] = await response.json()
           set({ watchlists })
         } catch (error) {
           console.error('Error fetching watchlists:', error)
@@ -123,12 +121,13 @@ export const useWatchlistStore = create<WatchlistState>()(
 
       setActiveWatchlist: (id) => {
         set({ activeWatchlistId: id })
+        get().fetchWatchlistTokens()
       },
 
       updateWatchlist: async (watchlist) => {
         try {
           set({ isLoading: true })
-          const response = await fetch(`${API_BASE_URL}/watchlists`, {
+          const response = await fetch(`${API_BASE_URL}/watchlists/${watchlist.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(watchlist)
@@ -152,62 +151,62 @@ export const useWatchlistStore = create<WatchlistState>()(
         }
       },
 
-      addToken: async (token) => {
+      addToken: async (token: WatchlistToken) => {
         const activeWatchlistId = get().activeWatchlistId
         if (!activeWatchlistId) {
-          toast.error('No active watchlist selected')
-          return
+          throw new Error('No active watchlist selected')
         }
 
         try {
           set({ isLoading: true })
+          
           const response = await fetch(`${API_BASE_URL}/watchlists/tokens`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
             body: JSON.stringify({
               watchlist_id: activeWatchlistId,
               token_address: token.address
             })
           })
 
-          if (!response.ok) throw new Error('Failed to add token')
+          if (!response.ok) {
+            throw new Error('Failed to add token')
+          }
 
           set((state) => ({
             tokens: [...state.tokens, token]
           }))
-          toast.success(`${token.symbol} added to watchlist`)
         } catch (error) {
           console.error('Error adding token:', error)
-          toast.error('Failed to add token')
           throw error
         } finally {
           set({ isLoading: false })
         }
       },
 
-      removeToken: async (address) => {
-        const activeWatchlistId = get().activeWatchlistId
-        if (!activeWatchlistId) {
-          toast.error('No active watchlist selected')
-          return
-        }
+      removeToken: async (address: string) => {
+        const { activeWatchlistId } = get()
+        if (!activeWatchlistId) return
 
         try {
           set({ isLoading: true })
-          const response = await fetch(
-            `${API_BASE_URL}/watchlists/${activeWatchlistId}/tokens/${address}`,
-            { method: 'DELETE' }
-          )
+          const response = await fetch(`${API_BASE_URL}/watchlists/${activeWatchlistId}/tokens/${address}`, {
+            method: 'DELETE'
+          })
 
-          if (!response.ok) throw new Error('Failed to remove token')
+          if (!response.ok) {
+            const text = await response.text()
+            throw new Error(text || 'Failed to remove token')
+          }
 
           set((state) => ({
             tokens: state.tokens.filter(t => t.address !== address)
           }))
-          toast.success('Token removed from watchlist')
         } catch (error) {
           console.error('Error removing token:', error)
-          toast.error('Failed to remove token')
           throw error
         } finally {
           set({ isLoading: false })
@@ -215,15 +214,46 @@ export const useWatchlistStore = create<WatchlistState>()(
       },
 
       fetchWatchlistTokens: async () => {
-        const activeWatchlistId = get().activeWatchlistId
+        const { activeWatchlistId } = get()
         if (!activeWatchlistId) return
-
+      
         try {
           set({ isLoading: true })
           const response = await fetch(`${API_BASE_URL}/watchlists/${activeWatchlistId}`)
           if (!response.ok) throw new Error('Failed to fetch tokens')
           
-          const { tokens } = await response.json()
+          const watchlistData = await response.json()
+          console.log('Raw Watchlist Data:', watchlistData)
+      
+          // Fetch metadata for each token
+          const tokenPromises = watchlistData.tokens.map(async (tokenAddress: string) => {
+            try {
+              const metadataResponse = await fetch(`${API_BASE_URL}/token_metadata/${tokenAddress}`)
+              if (!metadataResponse.ok) throw new Error('Failed to fetch token metadata')
+              
+              const metadata = await metadataResponse.json()
+              return {
+                address: tokenAddress,
+                symbol: metadata.symbol || '',
+                name: metadata.name || '',
+                balance: '0',
+                market_cap: metadata.market_cap,
+              }
+            } catch (error) {
+              console.error(`Error fetching metadata for token ${tokenAddress}:`, error)
+              return {
+                address: tokenAddress,
+                symbol: 'Unknown',
+                name: 'Unknown Token',
+                balance: '0',
+                market_cap: 0,
+              }
+            }
+          })
+      
+          const tokens = await Promise.all(tokenPromises)
+          console.log('Tokens with metadata:', tokens)
+          
           set({ tokens })
         } catch (error) {
           console.error('Error fetching tokens:', error)

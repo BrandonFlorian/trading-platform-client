@@ -2,51 +2,43 @@ import { TokenRowProps } from "@/types/ui"
 import { Button } from "@/components/ui/button"
 import { formatBalance } from "@/lib/utils"
 import { Star } from "lucide-react"
-import { useWatchlistStore } from "@/stores/watchlist-store"
+import { useWatchlistStore, WatchlistToken } from "@/stores/watchlist-store"
 import { toast } from "sonner"
 import { useWalletTrackerStore } from "@/stores/wallet-tracker-store"
 
 export const TokenRow = ({ token, onClickTrade }: TokenRowProps) => {
-  const { addToken } = useWatchlistStore()
+  const { addToken, activeWatchlistId } = useWatchlistStore()
   const { copyTradeSettings } = useWalletTrackerStore()
   
   const formattedBalance = formatBalance(parseFloat(token.balance));
   const hasMarketCap = token.market_cap > 0;
 
   const handleAddToWatchlist = async () => {
+    if (!activeWatchlistId) {
+      toast.error('Please select a watchlist first')
+      return
+    }
+  
     try {
-      // Log the exact token details being added
-      console.log('Token details for watchlist:', {
+      const tokenToAdd: WatchlistToken = {
         address: token.address,
         symbol: token.symbol,
         name: token.name,
         balance: token.balance,
         market_cap: token.market_cap
-      })
-
-      // Ensure we have an active watchlist from copy trade settings
-      if (!copyTradeSettings?.tracked_wallet_id) {
-        toast.error('No active watchlist found')
-        return
       }
 
-      await addToken({
-        address: token.address,
-        symbol: token.symbol,
-        name: token.name,
-        balance: token.balance,
-        market_cap: token.market_cap
-      })
-      
+      await addToken(tokenToAdd)
       toast.success(`${token.symbol} added to watchlist`)
-    } catch (error) {
-      console.error('Error adding token to watchlist:', error)
-      toast.error('Failed to add token to watchlist', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+    } catch (error: any) {
+      console.error('Error adding token to watchlist:', {
+        error: error.message || 'Failed to add token',
+        token,
+        watchlistId: activeWatchlistId
       })
+      toast.error(error.message || 'Failed to add token to watchlist')
     }
   }
-
   return (
     <div className="flex items-center justify-between py-2 hover:bg-accent/50 rounded-lg px-2 transition-colors">
       <div className="flex items-center gap-3">

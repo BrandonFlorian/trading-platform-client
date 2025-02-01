@@ -75,7 +75,7 @@ export const TrackedWalletsPanel = () => {
       setSelectedWallet(wallet)
     }
   }
-
+  console.log("walletdetails", walletDetails?.tokens)
   return (
     <div className="min-h-screen bg-background p-4 lg:p-8">
       <div className="mb-6">
@@ -135,8 +135,15 @@ export const TrackedWalletsPanel = () => {
                   {walletDetails.tokens && walletDetails.tokens.length > 0 ? (
                     walletDetails.tokens.map((token, index) => (
                       <TokenRow 
-                        key={`${token.address}-${index}`}
-                        token={token} 
+                          key={`${token.mint}-${index}`}
+                        token={{
+                          address: token.mint,
+                          symbol: token.symbol,
+                          name: token.name,
+                          balance: token.raw_balance,
+                          market_cap: token.market_cap,
+                          decimals: token.decimals
+                        }} 
                         onClickTrade={() => {/* Implement trade logic */}}
                       />
                     ))

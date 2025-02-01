@@ -8,10 +8,18 @@ export interface TokenInfo {
   decimals: number;
   market_cap: number;
 }
-
+export interface WalletDetailsMetadata {
+  mint: string;
+  symbol: string;
+  name: string;
+  raw_balance: string;
+  uri?: string;
+  decimals: number;
+  market_cap: number;
+}
 export interface WalletUpdate {
   balance: number;
-  tokens: TokenInfo[];
+  tokens: WalletDetailsMetadata[];
   address: string;
 }
 
@@ -36,21 +44,6 @@ export interface Notification {
   title: string;
   message: string;
   timestamp: Date;
-}
-export interface TokenInfo {
-  address: string;
-  symbol: string;
-  name: string;
-  balance: string;
-  metadata_uri?: string;
-  decimals: number;
-  market_cap: number;
-}
-
-export interface WalletUpdate {
-  balance: number;
-  tokens: TokenInfo[];
-  address: string;
 }
 
 export interface CopyTradeSettings {
@@ -89,4 +82,13 @@ export interface TrackedWallet {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface WatchlistToken {
+  address: string;
+  symbol: string;
+  name: string;
+  balance?: string;
+  market_cap?: number;
+  decimals?: number;
 }

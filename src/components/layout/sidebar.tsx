@@ -1,126 +1,99 @@
 "use client"
-import { WatchlistButton } from '@/components/watchlist/watchlist-button'
-import React, { useState } from 'react'
+
+import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { 
   BarChart2, 
   WalletCards, 
   Search, 
-  Settings, 
-  ChevronsLeft, 
-  ChevronsRight,
-  Star 
+  Settings,
+  Menu
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { WatchlistPanel } from './watchlist-panel'
+import { WatchlistButton } from '@/components/watchlist/watchlist-button'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { Separator } from '@/components/ui/separator'
 
-const SIDEBAR_ITEMS = [
-  { 
-    href: '/trading', 
-    icon: BarChart2, 
-    label: 'Trading' 
+const NAVIGATION_ITEMS = [
+  {
+    label: 'Trading',
+    href: '/trading',
+    icon: BarChart2
   },
-  { 
-    href: '/tracked-wallets', 
-    icon: WalletCards, 
-    label: 'Tracked Wallets' 
+  {
+    label: 'Tracked Wallets',
+    href: '/tracked-wallets',
+    icon: WalletCards
   },
-  { 
-    href: '/wallet-lookup', 
-    icon: Search, 
-    label: 'Wallet Lookup' 
+  {
+    label: 'Wallet Lookup',
+    href: '/wallet-lookup',
+    icon: Search
   },
-  { 
-    href: '/settings', 
-    icon: Settings, 
-    label: 'Settings' 
+  {
+    label: 'Settings',
+    href: '/settings',
+    icon: Settings
   }
 ]
 
 export function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
-
+  const [isCollapsed, setIsCollapsed] = React.useState(false)
+  
   return (
     <>
-      <div 
+      <aside 
         className={cn(
-          "fixed left-0 top-0 h-full bg-background border-r transition-all duration-300 z-40 flex flex-col",
+          "relative flex h-screen flex-col border-r bg-background",
           isCollapsed ? "w-16" : "w-64"
         )}
       >
-        <div className="flex flex-col h-full">
-          <div 
-            className={cn(
-              "flex items-center justify-between p-4 border-b",
-              isCollapsed && "flex-col"
-            )}
+        <div className="flex h-14 items-center border-b px-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mr-2"
+            onClick={() => setIsCollapsed(!isCollapsed)}
           >
-            {!isCollapsed && (
-              <span className="text-xl font-bold">Menu</span>
-            )}
-            <button 
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hover:bg-accent rounded-md p-2"
-            >
-              {isCollapsed ? <ChevronsRight /> : <ChevronsLeft />}
-            </button>
-          </div>
-          
-          <nav className="flex-1 py-4">
-            {SIDEBAR_ITEMS.map((item) => (
-              <SidebarItem 
-                key={item.href}
-                href={item.href}
-                icon={item.icon}
-                label={item.label}
-                isCollapsed={isCollapsed}
-                isActive={pathname === item.href}
-              />
-            ))}
-          </nav>
-
-          {/* Watchlist Button */}
-          <div className="p-4 border-t">
-            <WatchlistPanel>
-            <WatchlistButton />
-            </WatchlistPanel>
-          </div>
+            <Menu className="h-5 w-5" />
+          </Button>
+          {!isCollapsed && <span className="font-semibold">Trading App</span>}
         </div>
-      </div>
-    </>
-  )
-}
-interface SidebarItemProps {
-  href: string
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  isCollapsed?: boolean
-  isActive?: boolean
-}
+        
+        <nav className="flex-1 space-y-1 p-2">
+          {NAVIGATION_ITEMS.map(({ href, icon: Icon, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "flex items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                pathname === href 
+                  ? "bg-accent text-accent-foreground" 
+                  : "text-muted-foreground hover:bg-accent/50"
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              {!isCollapsed && <span>{label}</span>}
+            </Link>
+          ))}
+        </nav>
 
-function SidebarItem({ 
-  href, 
-  icon: Icon, 
-  label, 
-  isCollapsed, 
-  isActive 
-}: SidebarItemProps) {
-  return (
-    <Link 
-      href={href} 
-      className={cn(
-        "flex items-center p-3 mx-2 rounded-md transition-colors",
-        isActive 
-          ? "bg-primary text-primary-foreground" 
-          : "hover:bg-accent",
-        isCollapsed ? "justify-center" : "justify-start"
+        <div className="p-2 space-y-2">
+          <Separator />
+          {!isCollapsed && <WatchlistButton />}
+          <ThemeToggle isCollapsed={isCollapsed} />
+        </div>
+      </aside>
+      
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
+          onClick={() => setIsCollapsed(true)}
+        />
       )}
-    >
-      <Icon className="h-5 w-5 mr-3" />
-      {!isCollapsed && <span>{label}</span>}
-    </Link>
+    </>
   )
 }
