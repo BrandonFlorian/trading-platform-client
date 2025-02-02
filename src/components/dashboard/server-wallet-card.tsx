@@ -20,11 +20,11 @@ import { toast } from "sonner";
 import { DexType } from "@/types/crypto";
 import { TradeType } from "@/types/ui";
 
-interface ServerWalletCardProps {
+interface Props {
   displayName?: string;
 }
 
-export function ServerWalletCard({ displayName = "Server Wallet" }: ServerWalletCardProps) {
+export default function ServerWalletCard({ displayName = "Server Wallet" }: Props) {
   const {
     serverWallet,
     isLoading,
@@ -44,21 +44,28 @@ export function ServerWalletCard({ displayName = "Server Wallet" }: ServerWallet
     fetchWalletInfo();
   }, [fetchWalletInfo]);
 
-  const handleCloseTrade = () => {
-    setSelectedToken(null);
-    setIsTradeDialogOpen(false);
-  };
-
-  const handleCloseNewToken = () => {
-    setShowNewTokenDialog(false);
-    setNewTokenAddress("");
-  };
-
   const handleTokenTrade = (token: TokenInfo) => {
-    if (token && token.address) {
-      setSelectedToken(token);
-      setIsTradeDialogOpen(true);
+    setSelectedToken(token);
+    setIsTradeDialogOpen(true);
+  };
+
+  const handleNewToken = () => {
+    if (!newTokenAddress.trim()) {
+      toast.error("Please enter a token address");
+      return;
     }
+
+    const tokenInfo: TokenInfo = {
+      address: newTokenAddress,
+      symbol: "NEW",
+      name: "New Token",
+      balance: "0",
+      decimals: 9,
+      market_cap: 0
+    };
+
+    setSelectedToken(tokenInfo);
+    setShowNewTokenDialog(false);
   };
 
   const handleTrade = async (type: TradeType, amount: number, dex: DexType) => {
@@ -90,30 +97,12 @@ export function ServerWalletCard({ displayName = "Server Wallet" }: ServerWallet
         );
       }
 
-      handleCloseTrade();
-      handleCloseNewToken();
+      setIsTradeDialogOpen(false);
+      setNewTokenAddress("");
+      setShowNewTokenDialog(false);
     } catch (error) {
       console.error("Trade failed:", error);
     }
-  };
-
-  const handleNewToken = () => {
-    if (!newTokenAddress.trim()) {
-      toast.error("Please enter a token address");
-      return;
-    }
-
-    const tokenInfo: TokenInfo = {
-      address: newTokenAddress,
-      symbol: "NEW",
-      name: "New Token",
-      balance: "0",
-      decimals: 9,
-      market_cap: 0
-    };
-
-    setSelectedToken(tokenInfo);
-    setShowNewTokenDialog(false);
   };
 
   if (error) {
@@ -192,7 +181,7 @@ export function ServerWalletCard({ displayName = "Server Wallet" }: ServerWallet
             <TokenRow
               key={`${token.mint}-${index}`}
               token={{
-                address: token.mint,
+                address: token.mint,  // Match tracked-wallets format
                 symbol: token.symbol,
                 name: token.name,
                 balance: token.raw_balance,
@@ -200,7 +189,7 @@ export function ServerWalletCard({ displayName = "Server Wallet" }: ServerWallet
                 decimals: token.decimals
               }}
               onClickTrade={() => handleTokenTrade({
-                address: token.mint,
+                address: token.mint,  // Match tracked-wallets format
                 symbol: token.symbol,
                 name: token.name,
                 balance: token.raw_balance,
@@ -232,7 +221,7 @@ export function ServerWalletCard({ displayName = "Server Wallet" }: ServerWallet
 
       <Dialog
         open={showNewTokenDialog}
-        onOpenChange={handleCloseNewToken}
+        onOpenChange={setShowNewTokenDialog}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

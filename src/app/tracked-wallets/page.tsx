@@ -3,7 +3,7 @@
 
 import React from 'react'
 import { TrackedWalletsPanel } from '@/components/tracked-wallets/tracked-wallets-panel'
-import { ServerWalletCard } from '@/components/dashboard/server-wallet-card'
+import ServerWalletCard from '@/components/dashboard/server-wallet-card'
 import { NotificationsPanel } from '@/components/dashboard/notification-panel'
 import { Card } from '@/components/ui/card'
 

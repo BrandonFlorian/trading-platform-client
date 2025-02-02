@@ -5,15 +5,20 @@ import { Star } from "lucide-react"
 import { useWatchlistStore, WatchlistToken } from "@/stores/watchlist-store"
 import { toast } from "sonner"
 import { useWalletTrackerStore } from "@/stores/wallet-tracker-store"
+import { useRouter } from "next/navigation"
 
 export const TokenRow = ({ token, onClickTrade }: TokenRowProps) => {
+  const router = useRouter()
   const { addToken, activeWatchlistId, tokens } = useWatchlistStore()
   const { copyTradeSettings } = useWalletTrackerStore()
 
-  const formattedBalance = formatBalance(parseFloat(token.balance));
-  const hasMarketCap = token.market_cap > 0;
+  const formattedBalance = formatBalance(parseFloat(token.balance))
+  const hasMarketCap = token.market_cap > 0
+  const isInWatchlist = tokens.some(t => t.address === token.address)
 
-  const isInWatchlist = tokens.some(t => t.address === token.address);
+  const handleTokenClick = () => {
+    router.push(`/trading/${token.address}`)
+  }
 
   const handleAddToWatchlist = async () => {
     if (!activeWatchlistId) {
@@ -43,7 +48,10 @@ export const TokenRow = ({ token, onClickTrade }: TokenRowProps) => {
   }
 
   return (
-    <div className="flex items-center justify-between py-2 hover:bg-accent/50 rounded-lg px-2 transition-colors">
+    <div
+      className="flex items-center justify-between py-2 hover:bg-accent/50 rounded-lg px-2 transition-colors cursor-pointer"
+      onClick={handleTokenClick}
+    >
       <div className="flex items-center gap-3">
         <div className="flex flex-col">
           <span className="font-medium">{token.symbol}</span>
@@ -52,7 +60,7 @@ export const TokenRow = ({ token, onClickTrade }: TokenRowProps) => {
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4" onClick={e => e.stopPropagation()}>
         <div className="text-right">
           <div className="font-medium">{formattedBalance}</div>
           {hasMarketCap && (
@@ -64,7 +72,7 @@ export const TokenRow = ({ token, onClickTrade }: TokenRowProps) => {
         <Button
           variant="outline"
           size="sm"
-          onClick={onClickTrade}
+          onClick={() => onClickTrade()}
           className="min-w-[80px]"
         >
           Trade

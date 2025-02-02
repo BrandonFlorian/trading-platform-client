@@ -21,6 +21,9 @@ import { TradePanel } from '@/components/dashboard/trade-panel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { TradeType } from '@/types/ui'
+import { DexType } from '@/types/crypto'
+import { useWalletTrackerStore } from '@/stores/wallet-tracker-store'
 
 export const TrackedWalletsPanel = () => {
   const [trackedWallets, setTrackedWallets] = useState<TrackedWallet[]>([])
@@ -31,6 +34,7 @@ export const TrackedWalletsPanel = () => {
   const [isTradeDialogOpen, setIsTradeDialogOpen] = useState(false)
   const [isTradeLoading, setIsTradeLoading] = useState(false)
 
+  const { executeBuy, executeSell, copyTradeSettings } = useWalletTrackerStore()
   useEffect(() => {
     fetchTrackedWallets()
   }, [])
@@ -85,43 +89,75 @@ export const TrackedWalletsPanel = () => {
     }
   }
 
-  const handleTrade = async (type: 'buy' | 'sell', amount: number, dex: string) => {
-    setIsTradeLoading(true)
-    try {
-      const endpoint = type === 'buy' ? 'buy_token' : 'sell_token'
-      const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token_address: selectedToken?.address,
-          sol_quantity: type === 'buy' ? amount : undefined,
-          token_quantity: type === 'sell' ? amount : undefined,
-          slippage_tolerance: 0.2,
-          dex: dex
-        })
-      })
+  // const handleTrade = async (type: 'buy' | 'sell', amount: number, dex: string) => {
+  //   setIsTradeLoading(true)
+  //   try {
+  //     const endpoint = type === 'buy' ? 'buy_token' : 'sell_token'
+  //     const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({
+  //         token_address: selectedToken?.address,
+  //         sol_quantity: type === 'buy' ? amount : undefined,
+  //         token_quantity: type === 'sell' ? amount : undefined,
+  //         slippage_tolerance: 0.2,
+  //         dex: dex
+  //       })
+  //     })
 
-      if (!response.ok) throw new Error('Trade failed')
-      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} order placed successfully`)
-      setIsTradeDialogOpen(false)
-    } catch (error) {
-      toast.error('Failed to place trade order')
-      console.error('Trade error:', error)
-    } finally {
-      setIsTradeLoading(false)
-    }
-  }
+  //     if (!response.ok) throw new Error('Trade failed')
+  //     toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} order placed successfully`)
+  //     setIsTradeDialogOpen(false)
+  //   } catch (error) {
+  //     toast.error('Failed to place trade order')
+  //     console.error('Trade error:', error)
+  //   } finally {
+  //     setIsTradeLoading(false)
+  //   }
+  // }
 
   const handleTokenTrade = (token: TokenInfo) => {
     setSelectedToken(token);
     setIsTradeDialogOpen(true);
+    handleTrade("buy", 0.000001, "jupiter")
   }
+  const handleTrade = async (type: TradeType, amount: number, dex: DexType) => {
+    try {
+      if (type === "buy") {
+        if (!selectedToken?.address) {
+          toast.error("No token address provided");
+          return;
+        }
 
+        await executeBuy(
+          selectedToken?.address,
+          amount,
+          copyTradeSettings?.max_slippage || 0.2,
+          dex
+        );
+      } else {
+        if (!selectedToken?.address) {
+          toast.error("No token selected for sell");
+          return;
+        }
+
+        await executeSell(
+          selectedToken.address,
+          amount,
+          copyTradeSettings?.max_slippage || 0.2,
+          dex
+        );
+      }
+
+    } catch (error) {
+      console.error("Trade failed:", error);
+    } finally {
+      setIsTradeDialogOpen(false)
+    }
+  };
   return (
     <div className="min-h-screen bg-background p-4 lg:p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Tracked Wallets</h1>
-      </div>
+      
 
       <div className="grid grid-cols-1 gap-6">
         <Card>
