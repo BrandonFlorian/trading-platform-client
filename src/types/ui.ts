@@ -1,5 +1,5 @@
-import { CopyTradeSettings, TokenInfo, WalletUpdate } from "./index";
-import { DexType } from "./crypto";
+import { CopyTradeSettings, WalletUpdate } from "@/types/index";
+import { DexType } from "@/types/crypto";
 export type ConnectionState = "connected" | "connecting" | "disconnected";
 
 export interface TokenRowProps {
@@ -33,4 +33,13 @@ export interface TokenTradeProps {
   token: TokenInfo;
   onTrade: (type: TradeType, amount: number, dex: DexType) => Promise<void>;
   isLoading?: boolean;
+}
+
+export interface TokenInfo {
+  address: string;
+  symbol: string;
+  name: string;
+  balance: string;
+  decimals: number;
+  market_cap: number;
 }

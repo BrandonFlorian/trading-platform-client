@@ -19,6 +19,7 @@ export interface WatchlistToken {
   name: string
   balance?: string
   market_cap?: number
+  price_sol?: number
 }
 
 interface WatchlistState {
@@ -29,7 +30,7 @@ interface WatchlistState {
   error?: string
 
   // Watchlist operations
-  createWatchlist: (watchlist: Omit<Watchlist, 'id' | 'tokens'>) => Promise<Watchlist> 
+  createWatchlist: (watchlist: Omit<Watchlist, 'id' | 'tokens'>) => Promise<Watchlist>
   fetchWatchlists: () => Promise<void>
   deleteWatchlist: (id: string) => Promise<void>
   setActiveWatchlist: (id: string) => void
@@ -39,6 +40,10 @@ interface WatchlistState {
   addToken: (token: WatchlistToken) => Promise<void>
   removeToken: (address: string) => Promise<void>
   fetchWatchlistTokens: () => Promise<void>
+
+  // New operations
+  addToWatchlist: (token: WatchlistToken) => void
+  removeFromWatchlist: (address: string) => void
 }
 
 export const useWatchlistStore = create<WatchlistState>()(
@@ -49,7 +54,7 @@ export const useWatchlistStore = create<WatchlistState>()(
       activeWatchlistId: undefined,
       isLoading: false,
       error: undefined,
-      
+
       createWatchlist: async (watchlistData) => {
         try {
           set({ isLoading: true })
@@ -64,7 +69,7 @@ export const useWatchlistStore = create<WatchlistState>()(
           }
 
           const newWatchlist: Watchlist = await response.json()
-          
+
           set((state) => ({
             watchlists: [...state.watchlists, newWatchlist],
             activeWatchlistId: newWatchlist.id
@@ -84,7 +89,7 @@ export const useWatchlistStore = create<WatchlistState>()(
           set({ isLoading: true })
           const response = await fetch(`${API_BASE_URL}/watchlists`)
           if (!response.ok) throw new Error('Failed to fetch watchlists')
-          
+
           const watchlists: Watchlist[] = await response.json()
           set({ watchlists })
         } catch (error) {
@@ -137,7 +142,7 @@ export const useWatchlistStore = create<WatchlistState>()(
 
           const updatedWatchlist = await response.json()
           set((state) => ({
-            watchlists: state.watchlists.map(w => 
+            watchlists: state.watchlists.map(w =>
               w.id === updatedWatchlist.id ? updatedWatchlist : w
             )
           }))
@@ -159,10 +164,10 @@ export const useWatchlistStore = create<WatchlistState>()(
 
         try {
           set({ isLoading: true })
-          
+
           const response = await fetch(`${API_BASE_URL}/watchlists/tokens`, {
             method: 'POST',
-            headers: { 
+            headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json'
             },
@@ -216,21 +221,21 @@ export const useWatchlistStore = create<WatchlistState>()(
       fetchWatchlistTokens: async () => {
         const { activeWatchlistId } = get()
         if (!activeWatchlistId) return
-      
+
         try {
           set({ isLoading: true })
           const response = await fetch(`${API_BASE_URL}/watchlists/${activeWatchlistId}`)
           if (!response.ok) throw new Error('Failed to fetch tokens')
-          
+
           const watchlistData = await response.json()
           console.log('Raw Watchlist Data:', watchlistData)
-      
+
           // Fetch metadata for each token
           const tokenPromises = watchlistData.tokens.map(async (tokenAddress: string) => {
             try {
               const metadataResponse = await fetch(`${API_BASE_URL}/token_metadata/${tokenAddress}`)
               if (!metadataResponse.ok) throw new Error('Failed to fetch token metadata')
-              
+
               const metadata = await metadataResponse.json()
               return {
                 address: tokenAddress,
@@ -238,6 +243,7 @@ export const useWatchlistStore = create<WatchlistState>()(
                 name: metadata.name || '',
                 balance: '0',
                 market_cap: metadata.market_cap,
+                price_sol: metadata.price_sol,
               }
             } catch (error) {
               console.error(`Error fetching metadata for token ${tokenAddress}:`, error)
@@ -247,13 +253,14 @@ export const useWatchlistStore = create<WatchlistState>()(
                 name: 'Unknown Token',
                 balance: '0',
                 market_cap: 0,
+                price_sol: 0,
               }
             }
           })
-      
+
           const tokens = await Promise.all(tokenPromises)
           console.log('Tokens with metadata:', tokens)
-          
+
           set({ tokens })
         } catch (error) {
           console.error('Error fetching tokens:', error)
@@ -262,7 +269,15 @@ export const useWatchlistStore = create<WatchlistState>()(
         } finally {
           set({ isLoading: false })
         }
-      }
+      },
+
+      addToWatchlist: (token: WatchlistToken) => set((state) => ({
+        tokens: [...state.tokens, token]
+      })),
+
+      removeFromWatchlist: (address: string) => set((state) => ({
+        tokens: state.tokens.filter(t => t.address !== address)
+      }))
     }),
     {
       name: 'watchlist-storage',
