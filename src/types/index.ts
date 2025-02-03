@@ -1,17 +1,19 @@
 // types/index.ts
 export interface TokenInfo {
-  address: string;
-  symbol: string;
-  name: string;
-  balance: string;
-  metadata_uri?: string;
-  decimals: number;
-  market_cap: number;
-  price?: number;
-  logo?: string;
+  mint: string
+  symbol: string
+  name: string
+  raw_balance: string
+  metadata_uri?: string
+  decimals: number
+  market_cap: number
+  price_sol?: number
+  price_usd?: number
 }
 
 export interface WalletDetailsMetadata {
+  price_sol: any;
+  price_usd: any;
   mint: string;
   symbol: string;
   name: string;
@@ -74,4 +76,11 @@ export interface WatchlistToken {
   balance?: string;
   market_cap?: number;
   decimals?: number;
+}
+
+export interface TokenListResponse {
+  tokens: TokenInfo[]
+  total: number
+  page: number
+  limit: number
 }

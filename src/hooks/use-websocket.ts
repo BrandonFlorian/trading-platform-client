@@ -5,92 +5,93 @@ import { CommandMessage } from "@/types/websocket";
 
 const RECONNECT_DELAY = 5000;
 
-const useWebsocket = (url: string) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const websocketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<number | null>(null);
+interface WebSocketMessage {
+  type: string;
+  data?: any;
+}
+
+export const useWebSocket = (url: string) => {
+  const ws = useRef<WebSocket | null>(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
 
   const { addNotification, setServerWallet, setConnectionStatus } =
     useWalletTrackerStore();
 
-  const sendMessage = useCallback((message: CommandMessage) => {
-    if (websocketRef.current?.readyState === WebSocket.OPEN) {
-      websocketRef.current.send(JSON.stringify(message));
-    } else {
-      toast.error("WebSocket is not connected");
-    }
-  }, []);
-
   const connect = useCallback(() => {
-    if (websocketRef.current?.readyState === WebSocket.OPEN) return;
+    try {
+      ws.current = new WebSocket(url);
 
-    websocketRef.current = new WebSocket(url);
-    setConnectionStatus("connecting");
+      ws.current.onopen = () => {
+        reconnectAttempts.current = 0;
+        toast.success("WebSocket connection established");
+      };
 
-    websocketRef.current.onopen = () => {
-      setIsConnected(true);
-      setConnectionStatus("connected");
-      sendMessage({ type: "start" });
-    };
-
-    websocketRef.current.onclose = () => {
-      setIsConnected(false);
-      setConnectionStatus("disconnected");
-
-      // Clear any existing reconnection timeout
-      if (reconnectTimeoutRef.current) {
-        window.clearTimeout(reconnectTimeoutRef.current);
-      }
-
-      // Schedule reconnection
-      reconnectTimeoutRef.current = window.setTimeout(() => {
-        toast.info("Attempting to reconnect...");
-        connect();
-      }, RECONNECT_DELAY);
-    };
-
-    websocketRef.current.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        switch (data.type) {
-          case "wallet_update":
-            setServerWallet(data.data);
-            break;
-          case "copy_trade_execution":
-          case "tracked_wallet_trade":
-          case "transaction_logged":
-            addNotification({
-              id: crypto.randomUUID(),
-              type: "info",
-              title: data.type.replace(/_/g, " ").toUpperCase(),
-              message: `${data.data.transaction_type}: ${data.data.amount_token} ${data.data.token_symbol}`,
-              timestamp: new Date(),
-            });
-            break;
-          case "error":
-            toast.error(data.data.message);
-            break;
+      ws.current.onclose = (event) => {
+        if (!event.wasClean && reconnectAttempts.current < maxReconnectAttempts) {
+          reconnectAttempts.current += 1;
+          setTimeout(connect, 3000);
+          toast.error(`Reconnecting... (${reconnectAttempts.current}/${maxReconnectAttempts})`);
         }
-      } catch (error) {
-        console.error("Error processing message:", error);
-      }
-    };
-  }, [url, setConnectionStatus, setServerWallet, addNotification, sendMessage]);
+      };
+
+      ws.current.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        toast.error("WebSocket connection error");
+      };
+
+      ws.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          switch (data.type) {
+            case "wallet_update":
+              setServerWallet(data.data);
+              break;
+            case "copy_trade_execution":
+            case "tracked_wallet_trade":
+            case "transaction_logged":
+              addNotification({
+                id: crypto.randomUUID(),
+                type: "info",
+                title: data.type.replace(/_/g, " ").toUpperCase(),
+                message: `${data.data.transaction_type}: ${data.data.amount_token} ${data.data.token_symbol}`,
+                timestamp: new Date(),
+              });
+              break;
+            case "error":
+              toast.error(data.data.message);
+              break;
+          }
+        } catch (error) {
+          console.error("Error processing message:", error);
+        }
+      };
+    } catch (error) {
+      console.error("WebSocket connection failed:", error);
+      toast.error("Failed to connect to WebSocket");
+    }
+  }, [url, setServerWallet, addNotification]);
+
+  const sendMessage = useCallback((message: WebSocketMessage) => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(message));
+      return true;
+    }
+    toast.warning("Message not sent - connection not ready");
+    return false;
+  }, []);
 
   useEffect(() => {
     connect();
-
     return () => {
-      if (reconnectTimeoutRef.current) {
-        window.clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (websocketRef.current) {
-        websocketRef.current.close();
-      }
+      ws.current?.close();
     };
   }, [connect]);
 
-  return { sendMessage, isConnected };
+  return {
+    sendMessage,
+    isConnected: ws.current?.readyState === WebSocket.OPEN
+  };
 };
 
-export default useWebsocket;
+export default useWebSocket;

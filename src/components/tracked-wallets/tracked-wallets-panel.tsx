@@ -25,7 +25,7 @@ import { TradeType } from '@/types/ui'
 import { DexType } from '@/types/crypto'
 import { useWalletTrackerStore } from '@/stores/wallet-tracker-store'
 
-export const TrackedWalletsPanel = () => {
+export function TrackedWalletsPanel() {
   const [trackedWallets, setTrackedWallets] = useState<TrackedWallet[]>([])
   const [selectedWallet, setSelectedWallet] = useState<TrackedWallet | null>(null)
   const [walletDetails, setWalletDetails] = useState<WalletUpdate | null>(null)
@@ -124,25 +124,25 @@ export const TrackedWalletsPanel = () => {
   const handleTrade = async (type: TradeType, amount: number, dex: DexType) => {
     try {
       if (type === "buy") {
-        if (!selectedToken?.address) {
+        if (!selectedToken?.mint) {
           toast.error("No token address provided");
           return;
         }
 
         await executeBuy(
-          selectedToken?.address,
+          selectedToken?.mint,
           amount,
           copyTradeSettings?.max_slippage || 0.2,
           dex
         );
       } else {
-        if (!selectedToken?.address) {
+        if (!selectedToken?.mint) {
           toast.error("No token selected for sell");
           return;
         }
 
         await executeSell(
-          selectedToken.address,
+          selectedToken.mint,
           amount,
           copyTradeSettings?.max_slippage || 0.2,
           dex
@@ -156,109 +156,111 @@ export const TrackedWalletsPanel = () => {
     }
   };
   return (
-    <div className="min-h-screen bg-background p-4 lg:p-8">
-      
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle className="text-center">Tracked Wallets</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between mb-4">
+          <Select
+            value={selectedWallet?.wallet_address}
+            onValueChange={handleWalletSelect}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a wallet" />
+            </SelectTrigger>
+            <SelectContent>
+              {trackedWallets.map((wallet, index) => (
+                <SelectItem
+                  key={`${wallet.wallet_address}-${index}`}
+                  value={wallet.wallet_address}
+                >
+                  {wallet.wallet_address}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Wallet Details</span>
-              <Select
-                value={selectedWallet?.wallet_address}
-                onValueChange={handleWalletSelect}
-              >
-                <SelectTrigger className="w-[280px]">
-                  <SelectValue placeholder="Select a wallet" />
-                </SelectTrigger>
-                <SelectContent>
-                  {trackedWallets.map((wallet, index) => (
-                    <SelectItem
-                      key={`${wallet.wallet_address}-${index}`}
-                      value={wallet.wallet_address}
-                    >
-                      {wallet.wallet_address}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={`skeleton-${i}`} className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                      <Skeleton className="h-12 w-12 rounded-full" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-20" />
-                        <Skeleton className="h-4 w-32" />
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-16 mt-1" />
-                    </div>
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={`skeleton-${i}`} className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-32" />
                   </div>
-                ))}
-              </div>
-            ) : walletDetails ? (
-              <>
-                <div className="mb-4">
-                  <span>{walletDetails?.balance?.toFixed(4) || '0.0000'} SOL</span>
                 </div>
-                {walletDetails.tokens && walletDetails.tokens.length > 0 ? (
-                  walletDetails.tokens.map((token, index) => (
-                    <TokenRow
-                      key={`${token.mint}-${index}`}
-                      token={{
-                        address: token.mint,
-                        symbol: token.symbol,
-                        name: token.name,
-                        balance: token.raw_balance,
-                        market_cap: token.market_cap,
-                        decimals: token.decimals
-                      }}
-                      onClickTrade={() => handleTokenTrade({
-                        address: token.mint,
-                        symbol: token.symbol,
-                        name: token.name,
-                        balance: token.raw_balance,
-                        market_cap: token.market_cap,
-                        decimals: token.decimals
-                      })}
-                    />
-                  ))
-                ) : (
-                  <div className="text-center text-muted-foreground">
-                    No tokens found in this wallet
-                  </div>
-                )}
-              </>
+                <div className="text-right">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16 mt-1" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : walletDetails ? (
+          <>
+            <div className="mb-4">
+              <span>{walletDetails?.balance?.toFixed(4) || '0.0000'} SOL</span>
+            </div>
+            {walletDetails.tokens && walletDetails.tokens.length > 0 ? (
+              walletDetails.tokens.map((token, index) => (
+                <TokenRow
+                  key={`${token.mint}-${index}`}
+                  token={{
+                    address: token.mint,
+                    symbol: token.symbol,
+                    name: token.name,
+                    balance: token.raw_balance || '0',
+                    market_cap: token.market_cap,
+                    decimals: token.decimals
+                  }}
+                  onClickTrade={() => handleTokenTrade({
+                    mint: token.mint,
+                    symbol: token.symbol,
+                    name: token.name,
+                    raw_balance: token.raw_balance || '0',
+                    market_cap: token.market_cap,
+                    decimals: token.decimals
+                  })}
+                />
+              ))
             ) : (
               <div className="text-center text-muted-foreground">
-                No wallet selected or wallet details not available
+                No tokens found in this wallet
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </>
+        ) : (
+          <div className="text-center text-muted-foreground">
+            No wallet selected or wallet details not available
+          </div>
+        )}
 
-      <Dialog open={isTradeDialogOpen} onOpenChange={setIsTradeDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Trade Token</DialogTitle>
-          </DialogHeader>
-          {selectedToken && (
-            <TradePanel
-              token={selectedToken}
-              onTrade={handleTrade}
-              isLoading={isTradeLoading}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+        <Dialog open={isTradeDialogOpen} onOpenChange={setIsTradeDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Trade Token</DialogTitle>
+            </DialogHeader>
+            {selectedToken && (
+              <TradePanel
+                token={{
+                  address: selectedToken.mint,
+                  symbol: selectedToken.symbol,
+                  name: selectedToken.name,
+                  balance: selectedToken.raw_balance || '0',
+                  market_cap: selectedToken.market_cap,
+                  decimals: selectedToken.decimals
+                }}
+                onTrade={handleTrade}
+                isLoading={isTradeLoading}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   )
 }

@@ -4,7 +4,7 @@ export type ConnectionState = "connected" | "connecting" | "disconnected";
 
 export interface TokenRowProps {
   token: TokenInfo;
-  onClickTrade: () => void;
+  onClickTrade: (token: TokenInfo) => void;
 }
 
 export interface TradeFormState {
@@ -40,6 +40,6 @@ export interface TokenInfo {
   symbol: string;
   name: string;
   balance: string;
-  decimals: number;
   market_cap: number;
+  decimals: number;
 }

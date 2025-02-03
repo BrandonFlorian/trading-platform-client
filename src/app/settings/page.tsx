@@ -2,8 +2,11 @@
 "use client"
 
 import { SettingsTabs } from '@/components/settings/settings-tabs'
+import { NotificationSkeletons } from "@/components/ui/loading-skeleton"
 
 export default function SettingsPage() {
+  const isLoading = false; // Replace with actual loading state
+
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -13,7 +16,11 @@ export default function SettingsPage() {
         </p>
       </div>
       
-      <SettingsTabs />
+      {isLoading ? (
+        <NotificationSkeletons />
+      ) : (
+        <SettingsTabs />
+      )}
     </div>
   )
 }

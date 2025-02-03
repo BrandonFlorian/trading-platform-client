@@ -108,3 +108,14 @@ export interface WalletStore {
 }
 
 export type DexType = "pump_fun" | "raydium" | "jupiter";
+
+export interface TokenInfo {
+  address: string
+  mint: string
+  symbol: string
+  name: string
+  balance: string
+  raw_balance?: string
+  market_cap: number
+  decimals: number
+}

@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
+import throttle from 'lodash.throttle';
 
 export interface CandlestickData {
     x: Date;
@@ -22,6 +23,7 @@ interface PriceFeedHook {
 }
 
 const RECONNECT_DELAY = 5000;
+const MAX_RECONNECT_ATTEMPTS = 5;
 const MAX_CANDLES = 100;
 const CANDLE_INTERVAL = 60000; // 1 minute in milliseconds
 
@@ -32,20 +34,31 @@ const usePriceFeed = (
     const [isConnected, setIsConnected] = useState(false);
     const [priceData, setPriceData] = useState<PriceUpdate | null>(null);
     const [candlesticks, setCandlesticks] = useState<CandlestickData[]>([]);
+    const candlesticksRef = useRef<CandlestickData[]>([]);
     const websocketRef = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<number | null>(null);
+    const reconnectAttemptsRef = useRef(0);
+
+    const updateCandlesticksThrottled = useMemo(() => 
+        throttle(
+            (newCandles: CandlestickData[]) => {
+                setCandlesticks([...newCandles]);
+            },
+            1000, // Update every 1000ms
+            { leading: false, trailing: true }
+        ),
+    []
+    );
 
     const updateOrCreateCandle = (price: number, timestamp: Date) => {
-        setCandlesticks(prevCandles => {
-            const newCandles = [...prevCandles];
+        const newCandles = [...candlesticksRef.current];
 
-            if (newCandles.length === 0) {
-                return [{
-                    x: timestamp,
-                    y: [price, price, price, price] // open, high, low, close
-                }];
-            }
-
+        if (newCandles.length === 0) {
+            newCandles.push({
+                x: timestamp,
+                y: [price, price, price, price] // open, high, low, close
+            });
+        } else {
             const lastCandle = newCandles[newCandles.length - 1];
             const timeDiff = timestamp.getTime() - lastCandle.x.getTime();
 
@@ -67,12 +80,13 @@ const usePriceFeed = (
                     newCandles.shift();
                 }
             }
+        }
 
-            return newCandles;
-        });
+        candlesticksRef.current = newCandles;
+        updateCandlesticksThrottled(newCandles);
     };
 
-    const connect = () => {
+    const connect = useCallback(() => {
         if (!tokenAddress) return;
         if (websocketRef.current?.readyState === WebSocket.OPEN) return;
 
@@ -86,68 +100,141 @@ const usePriceFeed = (
             websocketRef.current.onopen = () => {
                 console.log('WebSocket connected');
                 setIsConnected(true);
+                reconnectAttemptsRef.current = 0;
                 toast.success(`Connected to price feed for ${tokenAddress}`);
             };
 
-            websocketRef.current.onclose = () => {
-                console.log('WebSocket closed');
+            websocketRef.current.onclose = (event: CloseEvent) => {
                 setIsConnected(false);
                 setPriceData(null);
 
-                if (reconnectTimeoutRef.current) {
-                    window.clearTimeout(reconnectTimeoutRef.current);
-                }
+                const closeInfo = {
+                    code: event.code,
+                    reason: event.reason,
+                    wasClean: event.wasClean
+                };
+                console.log('WebSocket closed:', closeInfo);
 
-                if (tokenAddress) {
-                    reconnectTimeoutRef.current = window.setTimeout(() => {
-                        console.log('Attempting to reconnect...');
-                        connect();
-                    }, RECONNECT_DELAY);
+                if (event.wasClean) {
+                    toast.info('Connection closed');
+                } else {
+                    handleReconnect();
                 }
             };
 
-            websocketRef.current.onmessage = (event) => {
+            websocketRef.current.onmessage = (event: MessageEvent) => {
                 try {
                     const update: PriceUpdate = JSON.parse(event.data);
-                    console.log('Received price update:', update);
+                    
+                    // Validate price structure
+                    if (typeof update.price_sol !== 'number' || update.price_sol <= 0) {
+                        throw new Error(`Invalid price: ${update.price_sol}`);
+                    }
+
+                    // Validate timestamp (assuming UNIX seconds)
+                    const now = Date.now();
+                    const timestamp = new Date(update.timestamp * 1000);
+                    if (Math.abs(now - timestamp.getTime()) > 60000) { // 1 minute tolerance
+                        throw new Error(`Stale timestamp: ${timestamp}`);
+                    }
 
                     setPriceData(update);
-                    const timestamp = new Date(update.timestamp * 1000);
                     updateOrCreateCandle(update.price_sol, timestamp);
                 } catch (error) {
-                    console.error('Error processing price update:', error);
-                    toast.error('Failed to process price update');
+                    console.error('Invalid price update:', error);
                 }
             };
 
-            websocketRef.current.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                toast.error('Price feed connection error');
+            websocketRef.current.onerror = (event: Event) => {
+                // Handle different types of WebSocket errors
+                let errorMessage = 'Unknown WebSocket error';
+                let errorDetails = {};
+
+                if (event instanceof ErrorEvent) {
+                    errorMessage = event.message;
+                    errorDetails = {
+                        type: event.type,
+                        error: event.error,
+                        message: event.message
+                    };
+                } else if (event instanceof Event) {
+                    errorDetails = {
+                        type: event.type,
+                        target: event.target
+                    };
+                }
+
+                console.error('WebSocket error:', errorDetails);
+                handleReconnect();
             };
+
         } catch (error) {
             console.error('Error creating WebSocket:', error);
             toast.error('Failed to create WebSocket connection');
+            handleReconnect();
         }
-    };
+    }, [baseUrl, tokenAddress]);
 
-    useEffect(() => {
-        connect();
+    // Separate reconnection logic
+    const handleReconnect = useCallback(() => {
+        if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+            const attemptNumber = reconnectAttemptsRef.current + 1;
+            toast.error(`Connection lost. Retrying... (${attemptNumber}/${MAX_RECONNECT_ATTEMPTS})`);
 
-        return () => {
-            console.log('Cleaning up WebSocket connection');
             if (reconnectTimeoutRef.current) {
                 window.clearTimeout(reconnectTimeoutRef.current);
             }
+
+            reconnectTimeoutRef.current = window.setTimeout(() => {
+                reconnectAttemptsRef.current = attemptNumber;
+                console.log(`Reconnection attempt ${attemptNumber}/${MAX_RECONNECT_ATTEMPTS}`);
+                connect();
+            }, RECONNECT_DELAY);
+        } else {
+            toast.error('Maximum reconnection attempts reached. Please refresh the page.');
+        }
+    }, [connect]);
+
+    // Cleanup function
+    const cleanup = useCallback(() => {
+        console.log('Cleaning up WebSocket connection');
+        if (reconnectTimeoutRef.current) {
+            window.clearTimeout(reconnectTimeoutRef.current);
+        }
+        if (websocketRef.current) {
+            websocketRef.current.close();
+        }
+        setIsConnected(false);
+        setPriceData(null);
+        reconnectAttemptsRef.current = 0;
+    }, []);
+
+    useEffect(() => {
+        const connectWebSocket = () => {
             if (websocketRef.current) {
                 websocketRef.current.close();
             }
+            connect();
+        };
+
+        connectWebSocket();
+
+        return () => {
+            updateCandlesticksThrottled.cancel();
+            if (websocketRef.current) {
+                websocketRef.current.close();
+                websocketRef.current = null;
+            }
+            candlesticksRef.current = [];
+            setCandlesticks([]);
+            setPriceData(null);
         };
     }, [tokenAddress]);
 
     return {
         priceData,
         isConnected,
-        candlesticks
+        candlesticks: candlesticksRef.current
     };
 };
 

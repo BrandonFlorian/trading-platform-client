@@ -56,10 +56,10 @@ export default function ServerWalletCard({ displayName = "Server Wallet" }: Prop
     }
 
     const tokenInfo: TokenInfo = {
-      address: newTokenAddress,
+      mint: newTokenAddress,
       symbol: "NEW",
       name: "New Token",
-      balance: "0",
+      raw_balance: "0",
       decimals: 9,
       market_cap: 0
     };
@@ -71,7 +71,7 @@ export default function ServerWalletCard({ displayName = "Server Wallet" }: Prop
   const handleTrade = async (type: TradeType, amount: number, dex: DexType) => {
     try {
       if (type === "buy") {
-        const tokenAddress = selectedToken ? selectedToken.address : newTokenAddress;
+        const tokenAddress = selectedToken ? selectedToken.mint : newTokenAddress;
         if (!tokenAddress) {
           toast.error("No token address provided");
           return;
@@ -84,13 +84,13 @@ export default function ServerWalletCard({ displayName = "Server Wallet" }: Prop
           dex
         );
       } else {
-        if (!selectedToken?.address) {
+        if (!selectedToken?.mint) {
           toast.error("No token selected for sell");
           return;
         }
 
         await executeSell(
-          selectedToken.address,
+          selectedToken.mint,
           amount,
           copyTradeSettings?.max_slippage || 0.2,
           dex
@@ -158,90 +158,33 @@ export default function ServerWalletCard({ displayName = "Server Wallet" }: Prop
   if (!serverWallet) return null;
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex justify-between items-center">
-            <span>{displayName}</span>
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowNewTokenDialog(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Token
-              </Button>
-              <span>{serverWallet.balance.toFixed(4)} SOL</span>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {serverWallet.tokens?.map((token, index) => (
-            <TokenRow
-              key={`${token.mint}-${index}`}
-              token={{
-                address: token.mint,  // Match tracked-wallets format
-                symbol: token.symbol,
-                name: token.name,
-                balance: token.raw_balance,
-                market_cap: token.market_cap,
-                decimals: token.decimals
-              }}
-              onClickTrade={() => handleTokenTrade({
-                address: token.mint,  // Match tracked-wallets format
-                symbol: token.symbol,
-                name: token.name,
-                balance: token.raw_balance,
-                market_cap: token.market_cap,
-                decimals: token.decimals
-              })}
-            />
-          ))}
-        </CardContent>
-      </Card>
-
-      <Dialog open={isTradeDialogOpen} onOpenChange={setIsTradeDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Trade</DialogTitle>
-            <DialogDescription>
-              Trade {selectedToken?.symbol}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedToken && (
-            <TradePanel
-              token={selectedToken}
-              onTrade={handleTrade}
-              isLoading={isLoading}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={showNewTokenDialog}
-        onOpenChange={setShowNewTokenDialog}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Buy New Token</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Token Address</label>
-              <Input
-                value={newTokenAddress}
-                onChange={(e) => setNewTokenAddress(e.target.value)}
-                placeholder="Enter token address"
-              />
-            </div>
-            <Button onClick={handleNewToken} className="w-full">
-              Continue to Trade
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle className="text-center">{displayName}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {serverWallet.tokens?.map((token, index) => (
+          <TokenRow
+            key={`${token.mint}-${index}`}
+            token={{
+              address: token.mint,  // Match tracked-wallets format
+              symbol: token.symbol,
+              name: token.name,
+              balance: token.raw_balance,
+              market_cap: token.market_cap,
+              decimals: token.decimals
+            }}
+            onClickTrade={() => handleTokenTrade({
+              mint: token.mint,  // Match tracked-wallets format
+              symbol: token.symbol,
+              name: token.name,
+              raw_balance: token.raw_balance,
+              market_cap: token.market_cap,
+              decimals: token.decimals
+            })}
+          />
+        ))}
+      </CardContent>
+    </Card>
   );
 }

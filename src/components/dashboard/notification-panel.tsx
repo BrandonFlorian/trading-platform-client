@@ -34,22 +34,15 @@ const getNotificationBadge = (type: string) => {
   }
 };
 
-export const NotificationsPanel = () => {
+export function NotificationsPanel() {
   const { notifications, clearNotifications } = useWalletTrackerStore();
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
-        <CardTitle className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            <span>Notifications</span>
-          </div>
-          {notifications.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearNotifications}>
-              Clear All
-            </Button>
-          )}
+        <CardTitle className="text-center flex justify-center items-center gap-2">
+          <Bell className="h-5 w-5" />
+          <span>Notifications</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -93,4 +86,4 @@ export const NotificationsPanel = () => {
       </CardContent>
     </Card>
   );
-};
+}
